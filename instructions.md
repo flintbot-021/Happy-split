@@ -1,298 +1,229 @@
-# HappySplit Development Instructions
+# HappySplit Development Guide
 
-## Project Overview
-HappySplit is a progressive web application designed to simplify restaurant bill splitting. The app uses AI-powered OCR for bill scanning, real-time collaboration features, and an intuitive mobile-first interface to help users accurately split their restaurant bills.
+## 1. Technical Stack
 
-## Technical Stack
-- Frontend: Next.js 15 with Tailwind CSS and shadcn/ui components
-- Backend: Supabase (database, authentication, real-time features)
-- AI Integration: OpenAI Vision API for OCR processing
-- State Management: React Hooks + Context API
+### Core Technologies
+- Next.js 15 with App Router
+- TypeScript
+- Tailwind CSS
+- Shadcn/UI
+- Supabase
+- OpenAI Vision API
+- Lucide Icons
 
-## Core Architecture
+### Optional Integrations
+- Resend (for email services, if needed)
+- Vercel V0
 
-### Database Schema
+## 2. Project Structure
 
-#### Bills Table
-```typescript
-interface Bill {
-  id: string;
-  created_at: string;
-  otp: string;
-  status: 'active' | 'expired';
-  creator_id: string;
-  total_amount: number;
-  items: BillItem[];
-  participants: Participant[];
-}
-```
+### Components
+- All components go in `/components` directory (root level)
+- Use kebab-case for component files: `example-component.ts`
+- Client components must include `"use client"` directive
 
-#### Bill Items Table
-```typescript
-interface BillItem {
-  id: string;
-  name: string;
-  quantity: number;
-  price: number;
-  category: 'Drinks' | 'Food' | 'Desserts';
-  assigned_to?: string;
-}
-```
+### Pages
+- All pages go in `/app` directory
+- Follow Next.js 15 App Router conventions
+- API routes belong in `/app/api`
 
-#### Participants Table
-```typescript
-interface Participant {
-  id: string;
-  name: string;
-  tip_percentage: number;
-  subtotal: number;
-}
-```
+## 3. Core Features
 
-## Key Features Implementation
+### Create Bill Flow
+1. Home screen "Create Bill" selection
+2. Camera activation for bill photo
+3. OpenAI OCR processing
+4. Item categorization (Drinks, Food, Desserts)
+5. Editable UI for line items
+6. Primary user controls for adjustments
 
-### 1. Bill Creation Flow
-- Implement camera activation for bill capture
-- Integrate OpenAI Vision API for OCR processing
-- Add item categorization logic (Drinks, Food, Desserts)
-- Create editable UI elements for bill items
-- Implement real-time updates using Supabase Realtime
+### Join Bill Flow
+1. 4-character OTP entry
+2. Real-time bill view
+3. Item selection with quantity adjustment
+4. Dynamic updates via Supabase Realtime
+5. Grayed-out claimed items
 
-### 2. Bill Joining Flow
-- Generate and validate 4-character OTP
-- Create session-based authentication
-- Implement real-time item claiming system
-- Add visual indicators for claimed items
-- Create participant management system
+### Bill Management
+1. Real-time collaboration
+2. Tip adjustment (0-50%)
+3. Primary user privileges
+4. 30-minute expiration
+5. Total calculations
 
-### 3. Real-time Collaboration
-- Set up Supabase Realtime subscriptions
-- Implement item claiming logic
-- Add real-time total calculations
-- Create shared view for all participants
-- Add active user indicators
+## 4. Development Guidelines
 
-### 4. Bill Management
-- Implement tip adjustment system (0-50% range)
-- Add item editing for primary user
-- Create automatic bill expiration system
-- Implement category management
-- Add real-time total updates
+### Data Management
+- Server components handle data fetching
+- Pass data down as props
+- Use Supabase Realtime for live updates
+- Implement temporary storage with auto-expiration
 
-## Performance Requirements
-- Initial page load: < 2 seconds
+### Code Organization
+- Keep codebase lean and modular
+- Clear separation of concerns
+- Document significant changes
+- Test thoroughly before adding complexity
+
+### UI/UX Requirements
+- Mobile-first design
+- Touch-optimized interactions
+- Real-time update indicators
+- Toggle views for bill and subtotals
+- Responsive layout
+
+## 5. Performance Requirements
+- Initial load: < 2 seconds
 - OCR processing: < 5 seconds
 - Real-time updates: < 500ms
-- Support for concurrent sessions
-- Mobile-optimized performance
+- Support concurrent sessions
+- Handle peak usage efficiently
 
-## Security Implementation
-1. Session Management:
-   - Implement OTP-based access
-   - Add 30-minute session expiration
-   - Create temporary storage system
+## 6. Development Process
 
-2. Privacy Measures:
-   - No personal data storage
-   - Automatic data cleanup
-   - Secure real-time connections
+### Documentation
+1. Always reference and update `@instructions.md`
+2. Document changes for:
+   - API implementations
+   - Supabase schema updates
+   - UI component additions
+   - Core functionality changes
 
-## Development Phases
+### Task Approach
+1. Break down into manageable steps
+2. Start with basic implementation
+3. Test thoroughly
+4. Iterate and enhance
+5. Document changes
 
-### Phase 1 (MVP)
-1. Basic Setup:
-   - Configure Next.js project
-   - Set up Supabase integration
-   - Implement shadcn/ui components
-   - Configure Tailwind CSS
+### Deployment
+- Local development first
+- Deploy to Vercel
+- Monitor performance metrics
 
-2. Core Features:
-   - Bill creation and scanning
-   - Real-time collaboration
-   - Basic bill management
-   - Tip calculations
-
-### Phase 2
-- Item splitting functionality
-- Enhanced OCR accuracy
-- User experience improvements
-- Performance optimizations
-
-## Testing Requirements
-1. Unit Tests:
-   - OCR processing accuracy
-   - Bill calculations
-   - Real-time updates
-
-2. Integration Tests:
-   - Multi-user scenarios
-   - Concurrent bill sessions
-   - Real-time synchronization
-
-3. Performance Tests:
-   - Load testing for concurrent users
-   - Response time monitoring
-   - Real-time update latency
-
-## MVP Limitations
-- Single currency support (ZAR only)
-- No user accounts or authentication
+## 7. MVP Limitations
+- Single currency (ZAR)
+- No user accounts
 - No offline functionality
-- No bill export features
-- No payment processing
+- No bill export
+- No multi-currency support
 
-## Development Guidelines
-1. Mobile-First Approach:
-   - Optimize for touch interactions
-   - Ensure responsive design
-   - Test on various devices
+## 8. Database Schema (Supabase)
 
-2. Code Organization:
-   - Follow Next.js file structure
-   - Implement proper state management
-   - Use TypeScript for type safety
+Database Schema Documentation - HappySplit
+Database Overview
+HappySplit uses Supabase as its primary database, implementing a relational schema to manage bills, items, participants, and item assignments. The schema is designed to support real-time collaboration while maintaining data integrity and security.
+Table Structures
+1. Bills Table
+Primary table for storing bill information
+sqlCopyCREATE TABLE bills (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    expires_at TIMESTAMP WITH TIME ZONE DEFAULT (NOW() + INTERVAL '30 minutes'),
+    otp VARCHAR(4) NOT NULL,
+    status VARCHAR(10) DEFAULT 'active',
+    total_amount DECIMAL(10,2),
+    active_users INTEGER DEFAULT 1,
+    creator_name VARCHAR(50) NOT NULL
+);
 
-3. Error Handling:
-   - Implement OCR fallbacks
-   - Add network error recovery
-   - Create user-friendly error messages
+Handles bill creation and expiration
+Manages OTP for bill access
+Tracks total amount and active users
+Stores temporary session data
 
-## Success Metrics
-- Bill creation time < 1 minute
-- Join process time < 30 seconds
-- OCR accuracy > 95%
-- User satisfaction metrics
-- System uptime > 99.9%
+2. Bill Items Table
+Stores individual items from scanned bills
+sqlCopyCREATE TABLE bill_items (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    bill_id UUID REFERENCES bills(id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    quantity INTEGER NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    category VARCHAR(20),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+Links items to specific bills
+Categorizes items (Drinks, Food, Desserts)
+Manages item quantities and prices
+
+3. Participants Table
+Manages temporary user sessions for bill splitting
+sqlCopyCREATE TABLE participants (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    bill_id UUID REFERENCES bills(id) ON DELETE CASCADE,
+    name VARCHAR(50) NOT NULL,
+    tip_percentage DECIMAL(5,2) DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+Tracks participant information
+Manages individual tip percentages
+Links participants to specific bills
+
+4. Item Assignments Table
+Handles the relationship between items and participants
+sqlCopyCREATE TABLE item_assignments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    bill_item_id UUID REFERENCES bill_items(id) ON DELETE CASCADE,
+    participant_id UUID REFERENCES participants(id) ON DELETE CASCADE,
+    quantity DECIMAL(5,2) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+Manages item claiming
+Supports partial quantity assignments
+Enables real-time updates
+
+Security Features
+Row Level Security (RLS)
+
+Enabled on all tables
+Policies restrict access to active bills only
+No authentication required (per MVP requirements)
+
+Data Privacy
+
+Automatic deletion after 30 minutes
+No permanent storage of personal information
+Session-based access control via OTP
+
+Real-time Features
+Supabase Realtime
+
+Enabled for all tables
+Supports instant updates for:
+
+Item assignments
+Participant changes
+Bill status updates
+Total calculations
 
 
-## File structure
-.
-├── instructions.md
-├── next-env.d.ts
-├── next.config.js
-├── package-lock.json
-├── package.json
-├── postcss.config.js
-├── src
-│   ├── app
-│   │   ├── bill
-│   │   │   └── [id]
-│   │   │       └── page.tsx
-│   │   ├── create
-│   │   │   └── page.tsx
-│   │   ├── globals.css
-│   │   ├── join
-│   │   │   └── page.tsx
-│   │   ├── layout.tsx
-│   │   └── page.tsx
-│   ├── components
-│   │   ├── bill-detail
-│   │   │   ├── bill-detail.tsx
-│   │   │   ├── bill-header.tsx
-│   │   │   ├── bill-items.tsx
-│   │   │   └── bill-summary.tsx
-│   │   ├── create-bill
-│   │   │   ├── camera-capture.tsx
-│   │   │   ├── create-bill-form.tsx
-│   │   │   ├── items-list.tsx
-│   │   │   ├── receipt-input.tsx
-│   │   │   └── upload-receipt.tsx
-│   │   ├── join-bill
-│   │   │   └── join-bill-form.tsx
-│   │   ├── providers
-│   │   │   └── session-provider.tsx
-│   │   ├── supabase-test
-│   │   │   ├── bill-display.tsx
-│   │   │   ├── connection-status.tsx
-│   │   │   └── index.tsx
-│   │   ├── supabase-test.tsx
-│   │   └── ui
-│   │       ├── button.tsx
-│   │       ├── index.ts
-│   │       ├── input.tsx
-│   │       ├── label.tsx
-│   │       ├── loading-spinner.tsx
-│   │       ├── slider.tsx
-│   │       ├── tabs.tsx
-│   │       ├── toast.tsx
-│   │       ├── toaster.tsx
-│   │       └── use-toast.ts
-│   ├── hooks
-│   │   ├── useBill.ts
-│   │   └── useCamera.ts
-│   ├── lib
-│   │   ├── bill-service.ts
-│   │   ├── hooks
-│   │   │   ├── index.ts
-│   │   │   ├── useBillRealtime.ts
-│   │   │   ├── useCamera.ts
-│   │   │   ├── useParticipants.ts
-│   │   │   └── useSession.ts
-│   │   ├── openai.ts
-│   │   ├── realtime.ts
-│   │   ├── services
-│   │   │   ├── index.ts
-│   │   │   ├── receipt-service
-│   │   │   │   ├── index.ts
-│   │   │   │   ├── mock-processor.ts
-│   │   │   │   ├── supabase-processor.ts
-│   │   │   │   ├── types.ts
-│   │   │   │   └── validators.ts
-│   │   │   └── receipt-service.ts
-│   │   ├── state
-│   │   │   └── toast-store.ts
-│   │   ├── supabase
-│   │   │   ├── bills.ts
-│   │   │   ├── client.ts
-│   │   │   ├── config.ts
-│   │   │   ├── index.ts
-│   │   │   ├── models
-│   │   │   │   ├── bill-item.ts
-│   │   │   │   ├── bill.ts
-│   │   │   │   ├── database.ts
-│   │   │   │   ├── index.ts
-│   │   │   │   └── participant.ts
-│   │   │   ├── realtime.ts
-│   │   │   ├── test
-│   │   │   │   ├── fixtures
-│   │   │   │   │   └── bill.ts
-│   │   │   │   ├── index.ts
-│   │   │   │   ├── operations
-│   │   │   │   │   ├── connection.ts
-│   │   │   │   │   ├── index.ts
-│   │   │   │   │   └── insert.ts
-│   │   │   │   ├── test-data.ts
-│   │   │   │   ├── test-operations.ts
-│   │   │   │   ├── types.ts
-│   │   │   │   └── utils
-│   │   │   │       ├── logging.ts
-│   │   │   │       └── validation.ts
-│   │   │   ├── test.ts
-│   │   │   ├── transformers
-│   │   │   │   └── bill.ts
-│   │   │   ├── types.ts
-│   │   │   └── validators.ts
-│   │   ├── supabase.ts
-│   │   ├── utils
-│   │   │   ├── cn.ts
-│   │   │   ├── currency.ts
-│   │   │   ├── error-handler.ts
-│   │   │   ├── index.ts
-│   │   │   └── otp.ts
-│   │   └── utils.ts
-│   ├── providers
-│   │   └── session-provider.tsx
-│   └── types
-│       ├── bill.ts
-│       └── database.ts
-├── supabase
-│   ├── functions
-│   │   └── process-receipt
-│   │       ├── config.ts
-│   │       ├── index.ts
-│   │       ├── openai.ts
-│   │       ├── types.ts
-│   │       └── validators.ts
-│   └── schema.sql
-├── tailwind.config.js
-└── tsconfig.json
+
+Automatic Cleanup
+
+Bills expire after 30 minutes
+Cascading deletes ensure data cleanup
+Trigger-based expiration handling
+
+Performance Optimizations
+
+Indexed OTP field for quick lookups
+Optimized relationship queries
+Efficient real-time subscription handling
+
+Integration Points
+
+OCR data storage
+Real-time collaboration
+Bill expiration management
+Item assignment tracking
+
+## 9. Security Requirements
+- No personal data storage
+- Session-based authentication
+- OTP access control
+- Automatic data cleanup
+- Secure real-time connections

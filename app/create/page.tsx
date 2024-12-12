@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { CameraCapture } from '@/components/camera-capture';
-import { Edit2, Trash2 } from 'lucide-react';
+import { Edit2, Trash2, ClipboardCopy } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 type ProcessingStatus = 'idle' | 'processing' | 'done' | 'error';
@@ -20,6 +20,7 @@ export default function CreateBill() {
   const [status, setStatus] = useState<ProcessingStatus>('idle');
   const [extractedItems, setExtractedItems] = useState<ExtractedItem[]>([]);
   const [editingItem, setEditingItem] = useState<number | null>(null);
+  const [shareCode, setShareCode] = useState<string | null>(null);
 
   const handleCapture = async (imageData: string) => {
     setCapturedImage(imageData);
@@ -80,12 +81,52 @@ export default function CreateBill() {
         throw new Error(error.error || 'Failed to save bill');
       }
 
-      const { billId } = await response.json();
-      router.push(`/bills/${billId}`);
+      const { billId, shareCode } = await response.json();
+      setShareCode(shareCode);
     } catch (error) {
       console.error('Error saving bill:', error);
       alert('Failed to save bill');
     }
+  };
+
+  const ShareDialog = () => {
+    if (!shareCode) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="bg-white p-6 rounded-lg max-w-md w-full mx-4">
+          <h2 className="text-xl font-bold mb-4">Share Bill</h2>
+          <p className="text-gray-600 mb-4">
+            Share this code with others to split the bill:
+          </p>
+          <div className="flex items-center gap-2 mb-6">
+            <div className="bg-gray-100 p-4 rounded-lg text-3xl font-mono tracking-wider text-center flex-1">
+              {shareCode.match(/.{1,3}/g)?.join(' ')}
+            </div>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(shareCode);
+                alert('Code copied!');
+              }}
+              className="p-2 text-blue-600 hover:text-blue-800"
+            >
+              <ClipboardCopy size={20} />
+            </button>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                setShareCode(null);
+                router.push(`/bills/${shareCode}`);
+              }}
+              className="flex-1 p-3 bg-blue-600 text-white rounded-lg"
+            >
+              Continue to Bill
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -218,6 +259,7 @@ export default function CreateBill() {
           </div>
         )}
       </div>
+      {shareCode && <ShareDialog />}
     </main>
   );
 } 

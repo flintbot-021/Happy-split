@@ -1,6 +1,16 @@
 'use client'
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -28,6 +38,7 @@ interface Bill {
 }
 
 export function BillSplitForm({ bill }: { bill: Bill }) {
+  const router = useRouter()
   const [items, setItems] = useState<BillItem[]>(
     bill.bill_items.map((item) => ({
       ...item,
@@ -36,6 +47,15 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
     }))
   )
   const [tipPercentage, setTipPercentage] = useState(0)
+  const [isCustomTip, setIsCustomTip] = useState(false)
+  const [isNameDialogOpen, setIsNameDialogOpen] = useState(false)
+  const [dinerName, setDinerName] = useState("")
+
+  const tipPresets = [
+    { label: '10%', value: 10 },
+    { label: '15%', value: 15 },
+    { label: '20%', value: 20 },
+  ]
 
   const handleItemSelect = (itemId: string, checked: boolean) => {
     setItems(items.map(item => 
@@ -88,6 +108,63 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
   }, {} as Record<string, BillItem[]>)
 
   const selectedItems = items.filter(i => i.selected)
+
+  const handleTipSelect = (value: number) => {
+    setTipPercentage(value)
+    setIsCustomTip(false)
+  }
+
+  const handleCustomTip = () => {
+    setIsCustomTip(true)
+  }
+
+  const handleLockIn = async () => {
+    if (!selectedItems.length) return
+
+    setIsNameDialogOpen(true)
+  }
+
+  const handleSubmitDiner = async () => {
+    if (!dinerName.trim()) return
+
+    const dinerData = {
+      billId: bill.id,
+      name: dinerName,
+      items: selectedItems.map(item => ({
+        itemId: item.id,
+        quantity: item.myQuantity,
+      })),
+      tipAmount: tipAmount,
+      total: total,
+    }
+
+    try {
+      const response = await fetch('/api/diners', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dinerData),
+      })
+
+      if (!response.ok) throw new Error('Failed to save diner')
+
+      // Close the dialog
+      setIsNameDialogOpen(false)
+      
+      // Refresh the page to update the data
+      router.refresh()
+
+      // Find the tabs element and switch to summary
+      const summaryTab = document.querySelector('[value="summary"]') as HTMLButtonElement
+      if (summaryTab) {
+        summaryTab.click()
+      }
+    } catch (error) {
+      console.error('Error saving diner:', error)
+      // Add error handling here
+    }
+  }
 
   return (
     <div className="p-4 max-w-md mx-auto">
@@ -164,30 +241,64 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
           {/* Tip Section */}
           {subtotal > 0 && (
             <div className="space-y-4">
-              <div className="flex justify-between items-center text-sm">
-                <span className="font-medium">Add Tip</span>
+              <div className="flex justify-between items-center">
+                <span className="font-medium text-sm">Add Tip</span>
                 <span className={cn(
-                  "font-medium",
+                  "font-medium text-sm",
                   tipPercentage > 0 ? "text-green-600" : "text-muted-foreground"
                 )}>
-                  {tipPercentage}%
+                  {tipPercentage > 0 && `R${tipAmount.toFixed(2)}`}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <Slider
-                  value={[tipPercentage]}
-                  min={0}
-                  max={20}
-                  step={1}
-                  onValueChange={([value]) => setTipPercentage(value)}
-                  className="flex-1"
-                />
-                <div className="text-right">
-                  <div className="text-sm font-medium text-green-600">
-                    + R{tipAmount.toFixed(2)}
-                  </div>
-                </div>
+              
+              <div className="flex gap-2">
+                {tipPresets.map(preset => (
+                  <button
+                    key={preset.value}
+                    onClick={() => handleTipSelect(preset.value)}
+                    className={cn(
+                      "flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors",
+                      tipPercentage === preset.value && !isCustomTip
+                        ? "bg-green-600 text-white"
+                        : "bg-secondary hover:bg-secondary/80"
+                    )}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+                <button
+                  onClick={handleCustomTip}
+                  className={cn(
+                    "flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors",
+                    isCustomTip
+                      ? "bg-green-600 text-white"
+                      : "bg-secondary hover:bg-secondary/80"
+                  )}
+                >
+                  Custom
+                </button>
               </div>
+
+              {isCustomTip && (
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">
+                      Custom amount
+                    </span>
+                    <span className="text-sm font-medium">
+                      {tipPercentage}%
+                    </span>
+                  </div>
+                  <Slider
+                    value={[tipPercentage]}
+                    min={0}
+                    max={30}
+                    step={1}
+                    onValueChange={([value]) => setTipPercentage(value)}
+                    className="flex-1"
+                  />
+                </div>
+              )}
             </div>
           )}
 
@@ -237,8 +348,43 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
               </CollapsibleContent>
             </Collapsible>
           </div>
+
+          {/* Lock In Button */}
+          {selectedItems.length > 0 && (
+            <Button
+              onClick={handleLockIn}
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
+            >
+              Lock in my selections
+            </Button>
+          )}
         </CardContent>
       </Card>
+
+      {/* Name Dialog */}
+      <Dialog open={isNameDialogOpen} onOpenChange={setIsNameDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Your Name</DialogTitle>
+            <DialogDescription>
+              Enter your name to lock in your selections
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <Input
+              placeholder="Your name"
+              value={dinerName}
+              onChange={(e) => setDinerName(e.target.value)}
+            />
+            <Button
+              onClick={handleSubmitDiner}
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
+            >
+              Confirm
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 } 

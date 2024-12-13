@@ -1,11 +1,12 @@
+import { DinersList } from "../components/diners-list"
 import { supabase } from '@/app/utils/supabase'
-import { DinersList } from '../components/diners-list'
 
 async function getBillWithDiners(billId: string) {
   const { data: bill } = await supabase
     .from('bills')
     .select(`
       *,
+      bill_items (*),
       diners (*)
     `)
     .eq('id', billId)
@@ -14,15 +15,16 @@ async function getBillWithDiners(billId: string) {
   return bill
 }
 
-export default async function BillSummaryPage({
-  params,
-}: {
-  params: { id: string }
-}) {
-  const bill = await getBillWithDiners(params.id)
+interface PageProps {
+  params: Promise<{ id: string }>
+}
+
+export default async function SummaryPage({ params }: PageProps) {
+  const { id } = await params
+  const bill = await getBillWithDiners(id)
 
   return (
-    <div className="p-4">
+    <div className="container mx-auto py-4">
       <DinersList bill={bill} />
     </div>
   )

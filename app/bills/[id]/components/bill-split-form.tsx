@@ -33,13 +33,17 @@ interface BillItem {
   myQuantity?: number
 }
 
+interface DinerItem {
+  itemId: string
+  quantity: number
+}
+
 interface Diner {
   id: string
   name: string
-  items: {
-    itemId: string
-    quantity: number
-  }[]
+  items: DinerItem[]
+  total: number
+  tip_amount: number
 }
 
 interface Bill {
@@ -97,18 +101,6 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
 
   const tipAmount = (subtotal * tipPercentage) / 100
   const total = subtotal + tipAmount
-
-  const getUnitLabel = (item: BillItem) => {
-    if (item.unit) return item.unit
-    switch (item.category) {
-      case 'Drinks':
-        return 'glass'
-      case 'Food':
-        return 'portion'
-      default:
-        return 'item'
-    }
-  }
 
   // Group items by category
   const groupedItems = items.reduce((groups, item) => {
@@ -241,6 +233,13 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
   const totalPaid = bill.diners.reduce((sum, diner) => sum + diner.total, 0)
   const outstandingAmount = bill.total_amount - totalPaid
 
+  const getItemTotal = (item: BillItem) => {
+    const quantity = item.myQuantity || 0
+    return item.selected && quantity > 1 
+      ? item.price * quantity 
+      : item.price
+  }
+
   return (
     <div className="p-4 max-w-md mx-auto">
       <Card>
@@ -327,9 +326,7 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
                         </div>
                         <div className="text-right">
                           <div className="font-medium">
-                            R{item.selected && item.myQuantity > 1 
-                              ? (item.price * item.myQuantity).toFixed(2) 
-                              : item.price.toFixed(2)}
+                            R{getItemTotal(item).toFixed(2)}
                           </div>
                         </div>
                       </div>
@@ -463,12 +460,12 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
                         {item.name}
                         {item.quantity > 1 && (
                           <span className="text-xs">
-                            ({item.myQuantity}/{item.quantity})
+                            ({item.myQuantity || 0}/{item.quantity})
                           </span>
                         )}
                       </span>
                       <span>
-                        R{(item.price * item.myQuantity).toFixed(2)}
+                        R{getItemTotal(item).toFixed(2)}
                       </span>
                     </div>
                   ))}

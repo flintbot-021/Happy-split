@@ -16,7 +16,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
 import { ChevronDown } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Badge } from "@/components/ui/badge"
@@ -52,9 +51,8 @@ interface Bill {
   diners: Diner[]
 }
 
-export function DinersList({ bill: initialBill }: { bill: Bill }) {
+export function DinersList({ bill }: { bill: Bill }) {
   const router = useRouter()
-  const [bill, setBill] = useState(initialBill)
   const [dinerToDelete, setDinerToDelete] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 

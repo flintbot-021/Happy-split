@@ -1,15 +1,16 @@
-import { supabase } from '@/app/utils/supabase'
 import { NextResponse } from 'next/server'
+import { supabase } from '@/app/utils/supabase'
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
 ) {
   try {
+    const id = request.url.split('/').pop()
+
     const { error } = await supabase
       .from('diners')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
 
     if (error) throw error
 

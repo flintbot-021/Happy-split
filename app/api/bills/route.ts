@@ -6,13 +6,20 @@ function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+interface BillItem {
+  name: string;
+  price: number;
+  quantity: number;
+  category: string;
+}
+
 export async function POST(request: Request) {
   try {
     const { items, totalAmount } = await request.json();
     const otp = generateOTP();
 
     // Create the bill with OTP as the ID
-    const { data: bill, error: billError } = await supabase
+    const { error: billError } = await supabase
       .from('bills')
       .insert({
         id: otp,  // Using OTP as the ID for easy sharing
@@ -28,7 +35,7 @@ export async function POST(request: Request) {
     }
 
     // Create the bill items
-    const billItems = items.map((item: any) => ({
+    const billItems = items.map((item: BillItem) => ({
       bill_id: otp,
       name: item.name,
       price: item.price,

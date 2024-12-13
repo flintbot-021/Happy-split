@@ -63,29 +63,21 @@ export default function CreateBill() {
     sum + (item.price * item.quantity), 0
   );
 
-  const saveBill = async () => {
+  const handleSubmit = async () => {
     try {
+      const formData = new FormData()
+      formData.append('items', JSON.stringify(extractedItems))
+      formData.append('totalAmount', totalAmount.toString())
+
       const response = await fetch('/api/bills', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          items: extractedItems,
-          totalAmount
-        }),
+        body: formData,
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to save bill');
-      }
-
-      const { billId, shareCode } = await response.json();
-      setShareCode(shareCode);
+      const { billId } = await response.json();
+      router.push(`/bills/${billId}`);
     } catch (error) {
-      console.error('Error saving bill:', error);
-      alert('Failed to save bill');
+      console.error('Error creating bill:', error);
     }
   };
 
@@ -250,7 +242,7 @@ export default function CreateBill() {
               </button>
 
               <button
-                onClick={saveBill}
+                onClick={handleSubmit}
                 className="flex-1 p-3 bg-blue-600 text-white rounded-lg"
               >
                 Save Bill

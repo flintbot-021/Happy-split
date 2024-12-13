@@ -25,28 +25,21 @@ Return the data in JSON array format like:
 `;
 
 export async function POST(request: Request) {
-  console.log('🔵 API: Process bill request received');
-  
   try {
     const body = await request.json();
-    console.log('🔵 API: Request body received, image length:', body.image?.length);
 
     if (!body.image) {
-      console.error('❌ API: No image data received');
       return NextResponse.json(
         { error: 'No image data provided' },
         { status: 400 }
       );
     }
 
-    // Extract base64 data from the data URL
     const base64Image = body.image.split(',')[1];
-    console.log('🔵 API: Extracted base64 data, length:', base64Image.length);
 
     try {
-      console.log('🔵 API: Sending request to OpenAI');
       const response = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
+        model: "gpt-4-vision-preview",
         messages: [
           {
             role: "user",
@@ -57,7 +50,7 @@ export async function POST(request: Request) {
               },
               {
                 type: "image_url",
-                image_url: {  // Changed this to match Python example
+                image_url: {
                   url: `data:image/jpeg;base64,${base64Image}`
                 }
               }
@@ -68,52 +61,42 @@ export async function POST(request: Request) {
         temperature: 0,
       });
 
-      console.log('🔵 API: OpenAI response received:', response.choices[0].message);
-
-      const result = response.choices[0].message.content;
-      let items = [];
+      const result = response.choices[0]?.message?.content;
       
-      try {
-        // Clean the response by removing markdown code block
-        const cleanedResult = result
-          .replace(/```json\n?/, '') // Remove opening ```json
-          .replace(/\n?```$/, '')    // Remove closing ```
-          .trim();                   // Remove extra whitespace
+      if (!result) {
+        return NextResponse.json(
+          { error: 'No response from OpenAI' },
+          { status: 500 }
+        );
+      }
 
-        console.log('🔵 API: Cleaned result:', cleanedResult);
+      try {
+        const cleanedResult = result
+          .replace(/```json\n?/, '')
+          .replace(/\n?```$/, '')
+          .trim();
 
         if (cleanedResult.startsWith('[') || cleanedResult.startsWith('{')) {
-          items = JSON.parse(cleanedResult);
-          console.log('🔵 API: Successfully parsed items:', items);
+          const items = JSON.parse(cleanedResult);
+          return NextResponse.json({ items });
         } else {
-          console.warn('⚠️ API: Response not in JSON format:', cleanedResult);
-          items = [];
+          return NextResponse.json({ items: [] });
         }
       } catch (parseError) {
         console.error('❌ API: Parse error:', parseError);
         console.error('❌ API: Raw response:', result);
         throw new Error('Failed to parse items from receipt');
       }
-
-      return NextResponse.json({ items });
-    } catch (openaiError: any) {
-      console.error('❌ API: OpenAI error:', {
-        message: openaiError.message,
-        type: openaiError.type,
-        code: openaiError.code,
-      });
-      throw openaiError;
+    } catch (error) {
+      console.error('❌ API: OpenAI error:', error);
+      throw error;
     }
-  } catch (error: any) {
-    console.error('❌ API: General error:', {
-      name: error.name,
-      message: error.message,
-      code: error.code,
-      type: error.type,
-    });
+  } catch (error) {
+    console.error('❌ API: General error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     
     return NextResponse.json(
-      { error: 'Failed to process bill', details: error.message },
+      { error: 'Failed to process bill', details: errorMessage },
       { status: 500 }
     );
   }

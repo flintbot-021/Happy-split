@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import {
   Dialog,
@@ -19,6 +19,8 @@ import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { ChevronDown } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { supabase } from "@/lib/supabase"
 
 interface BillItem {
   id: string
@@ -31,10 +33,20 @@ interface BillItem {
   myQuantity?: number
 }
 
+interface Diner {
+  id: string
+  name: string
+  items: {
+    itemId: string
+    quantity: number
+  }[]
+}
+
 interface Bill {
   id: string
   total_amount: number
   bill_items: BillItem[]
+  diners: Diner[]
 }
 
 export function BillSplitForm({ bill }: { bill: Bill }) {
@@ -47,6 +59,7 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
     }))
   )
   const [tipPercentage, setTipPercentage] = useState(0)
+
   const [isCustomTip, setIsCustomTip] = useState(false)
   const [isNameDialogOpen, setIsNameDialogOpen] = useState(false)
   const [dinerName, setDinerName] = useState("")
@@ -149,89 +162,204 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
 
       if (!response.ok) throw new Error('Failed to save diner')
 
-      // Close the dialog
+      localStorage.removeItem(`bill-${bill.id}-items`)
+      localStorage.removeItem(`bill-${bill.id}-tip`)
+
       setIsNameDialogOpen(false)
-      
-      // Refresh the page to update the data
       router.refresh()
 
-      // Find the tabs element and switch to summary
       const summaryTab = document.querySelector('[value="summary"]') as HTMLButtonElement
       if (summaryTab) {
         summaryTab.click()
       }
     } catch (error) {
       console.error('Error saving diner:', error)
-      // Add error handling here
     }
   }
+
+  // Calculate remaining quantities for each item
+  const getRemainingQuantity = (itemId: string) => {
+    const takenQuantity = bill.diners.reduce((sum, diner) => {
+      const dinerItem = diner.items.find(item => item.itemId === itemId)
+      return sum + (dinerItem?.quantity || 0)
+    }, 0)
+
+    const item = bill.bill_items.find(item => item.id === itemId)
+    return item ? item.quantity - takenQuantity : 0
+  }
+
+  // Get who selected this item
+  const getSelectedBy = (itemId: string): string[] => {
+    return bill.diners
+      .filter(diner => diner.items.some(item => item.itemId === itemId))
+      .map(diner => diner.name)
+  }
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('bill_updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'diners',
+          filter: `bill_id=eq.${bill.id}`
+        },
+        () => {
+          router.refresh()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [bill.id, router])
+
+  useEffect(() => {
+    const savedItems = localStorage.getItem(`bill-${bill.id}-items`)
+    const savedTip = localStorage.getItem(`bill-${bill.id}-tip`)
+
+    if (savedItems) {
+      setItems(JSON.parse(savedItems))
+    }
+    if (savedTip) {
+      setTipPercentage(parseInt(savedTip))
+    }
+  }, [bill.id])
+
+  useEffect(() => {
+    localStorage.setItem(`bill-${bill.id}-items`, JSON.stringify(items))
+  }, [items, bill.id])
+
+  useEffect(() => {
+    localStorage.setItem(`bill-${bill.id}-tip`, tipPercentage.toString())
+  }, [tipPercentage, bill.id])
+
+  // Calculate total paid and outstanding amount
+  const totalPaid = bill.diners.reduce((sum, diner) => sum + diner.total, 0)
+  const outstandingAmount = bill.total_amount - totalPaid
 
   return (
     <div className="p-4 max-w-md mx-auto">
       <Card>
         <CardHeader>
           <CardTitle>Select Your Items</CardTitle>
+          {outstandingAmount > 0 && (
+            <div className="flex justify-between items-center mt-2 text-sm">
+              <span className="text-muted-foreground">Outstanding Amount</span>
+              <span className="text-red-600 font-medium">
+                R{outstandingAmount.toFixed(2)}
+              </span>
+            </div>
+          )}
         </CardHeader>
         <CardContent className="space-y-8">
           {Object.entries(groupedItems).map(([category, categoryItems]) => (
             <div key={category} className="space-y-4">
               <h2 className="font-semibold text-lg">{category}</h2>
               <div className="space-y-4">
-                {categoryItems.map((item) => (
-                  <div key={item.id} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id={item.id}
-                          checked={item.selected}
-                          onCheckedChange={(checked) => 
-                            handleItemSelect(item.id, checked as boolean)
-                          }
-                        />
-                        <Label htmlFor={item.id} className="font-medium flex items-center gap-2">
-                          <span className="text-sm text-muted-foreground">
-                            {item.quantity > 1 
-                              ? (item.selected ? `${item.myQuantity}/${item.quantity}` : item.quantity)
-                              : "1"} ·
-                          </span>
-                          {item.name}
-                        </Label>
-                      </div>
-                      <div className="text-right font-medium">
-                        R{item.selected && item.myQuantity > 1 
-                          ? (item.price * item.myQuantity).toFixed(2) 
-                          : item.price.toFixed(2)}
-                      </div>
-                    </div>
+                {categoryItems.map((item) => {
+                  const remainingQuantity = getRemainingQuantity(item.id)
+                  const selectedBy = getSelectedBy(item.id)
+                  const isFullyTaken = remainingQuantity === 0
 
-                    {item.selected && (
-                      <div className="pl-6 space-y-2">
-                        {item.quantity > 1 ? (
-                          <div className="space-y-2">
-                            <div className="flex justify-end">
-                              <div>
+                  return (
+                    <div key={item.id} className={cn(
+                      "space-y-2",
+                      isFullyTaken && "opacity-50"
+                    )}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id={item.id}
+                            checked={item.selected}
+                            onCheckedChange={(checked) => 
+                              handleItemSelect(item.id, checked as boolean)
+                            }
+                            disabled={isFullyTaken && !item.selected}
+                          />
+                          <Label 
+                            htmlFor={item.id} 
+                            className="font-medium flex items-center gap-2 flex-1 min-w-0"
+                          >
+                            <span className="text-sm text-muted-foreground">
+                              {item.quantity > 1 
+                                ? (item.selected 
+                                    ? `${item.myQuantity}/${remainingQuantity}` 
+                                    : remainingQuantity)
+                                : "1"} ·
+                            </span>
+                            <span className="flex items-center gap-2 min-w-0">
+                              <span className="truncate">{item.name}</span>
+                              {selectedBy.length > 0 && (
+                                <div className="flex flex-wrap gap-1 ml-auto">
+                                  {selectedBy.length > 1 ? (
+                                    <>
+                                      <Badge 
+                                        key={selectedBy[0]} 
+                                        variant="secondary" 
+                                        className="text-xs text-muted-foreground"
+                                      >
+                                        {selectedBy[0]}
+                                      </Badge>
+                                      <Badge 
+                                        variant="secondary" 
+                                        className="text-xs text-muted-foreground"
+                                      >
+                                        +{selectedBy.length - 1} others
+                                      </Badge>
+                                    </>
+                                  ) : (
+                                    <Badge 
+                                      key={selectedBy[0]} 
+                                      variant="secondary" 
+                                      className="text-xs text-muted-foreground"
+                                    >
+                                      {selectedBy[0]}
+                                    </Badge>
+                                  )}
+                                </div>
+                              )}
+                            </span>
+                          </Label>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-medium">
+                            R{item.selected && item.myQuantity > 1 
+                              ? (item.price * item.myQuantity).toFixed(2) 
+                              : item.price.toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
 
+                      {item.selected && (
+                        <div className="pl-6 space-y-2">
+                          {item.quantity > 1 && remainingQuantity > 0 ? (
+                            <div className="space-y-2">
+                              <div className="flex justify-end">
                                 <div className="text-xs text-muted-foreground">
                                   R{item.price.toFixed(2)} per item
                                 </div>
                               </div>
+                              <div className="flex items-center gap-2">
+                                <Slider
+                                  value={[item.myQuantity || 0]}
+                                  min={0}
+                                  max={remainingQuantity + (item.myQuantity || 0)}
+                                  step={1}
+                                  onValueChange={(value) => handleQuantityChange(item.id, value)}
+                                  className="flex-1"
+                                />
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Slider
-                                value={[item.myQuantity || 0]}
-                                min={0}
-                                max={item.quantity}
-                                step={1}
-                                onValueChange={(value) => handleQuantityChange(item.id, value)}
-                                className="flex-1"
-                              />
-                            </div>
-                          </div>
-                        ) : null}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                          ) : null}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </div>
           ))}

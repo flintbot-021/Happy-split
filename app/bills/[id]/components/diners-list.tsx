@@ -1,6 +1,17 @@
 'use client'
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { createClient } from '@supabase/supabase-js'
+import { Trash2 } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -9,6 +20,12 @@ import { cn } from "@/lib/utils"
 import { ChevronDown } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Badge } from "@/components/ui/badge"
+
+// Create a Supabase client for the browser
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 interface DinerItem {
   itemId: string
@@ -35,7 +52,49 @@ interface Bill {
   diners: Diner[]
 }
 
-export function DinersList({ bill }: { bill: Bill }) {
+export function DinersList({ bill: initialBill }: { bill: Bill }) {
+  const router = useRouter()
+  const [bill, setBill] = useState(initialBill)
+  const [dinerToDelete, setDinerToDelete] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  useEffect(() => {
+    // Create a channel for both diners and bills
+    const channel = supabase
+      .channel('bill_updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'diners',
+          filter: `bill_id=eq.${bill.id}`
+        },
+        () => {
+          // Refresh data when diners change
+          router.refresh()
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bills',
+          filter: `id=eq.${bill.id}`
+        },
+        () => {
+          // Refresh data when bill changes
+          router.refresh()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [bill.id, router])
+
   const getItemName = (itemId: string) => {
     return bill.bill_items.find(item => item.id === itemId)?.name || 'Unknown Item'
   }
@@ -56,6 +115,25 @@ export function DinersList({ bill }: { bill: Bill }) {
   // Calculate tip percentage
   const tipPercentage = ((tipTotal / itemsTotal) * 100).toFixed(1)
 
+  const handleDelete = async (dinerId: string) => {
+    setIsDeleting(true)
+    try {
+      const response = await fetch(`/api/diners/${dinerId}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) throw new Error('Failed to delete')
+
+      router.refresh()
+    } catch (error) {
+      console.error('Error deleting diner:', error)
+      // Could add toast notification here
+    } finally {
+      setIsDeleting(false)
+      setDinerToDelete(null)
+    }
+  }
+
   return (
     <div className="max-w-md mx-auto">
       <Card>
@@ -72,9 +150,17 @@ export function DinersList({ bill }: { bill: Bill }) {
                 <div key={diner.id} className="space-y-4">
                   <div className="flex justify-between items-center">
                     <h3 className="font-semibold text-lg">{diner.name}</h3>
-                    <span className="text-lg font-bold">
-                      R{diner.total.toFixed(2)}
-                    </span>
+                    <div className="flex items-center gap-4">
+                      <button
+                        onClick={() => setDinerToDelete(diner.id)}
+                        className="text-muted-foreground hover:text-red-600 transition-colors"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                      <span className="text-lg font-bold">
+                        R{diner.total.toFixed(2)}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -155,6 +241,32 @@ export function DinersList({ bill }: { bill: Bill }) {
           </div>
         </CardContent>
       </Card>
+
+      <AlertDialog open={!!dinerToDelete} onOpenChange={() => setDinerToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove your selections from the bill. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDinerToDelete(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => dinerToDelete && handleDelete(dinerToDelete)}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Removing..." : "Remove"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 } 

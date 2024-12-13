@@ -17,27 +17,38 @@ async function getBillWithDiners(billId: string) {
   return bill
 }
 
-export default async function BillPage({
-  params,
-}: {
-  params: { id: string }
-}) {
-  const bill = await getBillWithDiners(params.id)
+interface PageProps {
+  params: Promise<{ id: string }>
+}
+
+export default async function BillPage({ params }: PageProps) {
+  const { id } = await params
+  const bill = await getBillWithDiners(id)
 
   return (
-    <div className="container mx-auto py-4">
-      <Tabs defaultValue="split" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="split">Split Bill</TabsTrigger>
-          <TabsTrigger value="summary">Summary</TabsTrigger>
-        </TabsList>
-        <TabsContent value="split">
-          <BillSplitForm bill={bill} />
-        </TabsContent>
-        <TabsContent value="summary">
-          <DinersList bill={bill} />
-        </TabsContent>
-      </Tabs>
+    <div className="relative min-h-screen pb-16">
+      <div className="container mx-auto py-4">
+        <Tabs defaultValue="split" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="split">Split Bill</TabsTrigger>
+            <TabsTrigger value="summary">Summary</TabsTrigger>
+          </TabsList>
+          <TabsContent value="split">
+            <BillSplitForm bill={bill} />
+          </TabsContent>
+          <TabsContent value="summary">
+            <DinersList bill={bill} />
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      {/* Bill Code Banner */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t">
+        <div className="container mx-auto py-3 px-4 flex justify-between items-center">
+          <div className="text-sm text-muted-foreground">Bill Code</div>
+          <div className="font-mono font-medium">{id}</div>
+        </div>
+      </div>
     </div>
   )
 } 

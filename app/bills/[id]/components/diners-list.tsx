@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '@/lib/utils'
 import { Trash2 } from "lucide-react"
 import {
   AlertDialog,
@@ -19,12 +19,6 @@ import { Button } from "@/components/ui/button"
 import { ChevronDown } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Badge } from "@/components/ui/badge"
-
-// Create a Supabase client for the browser
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 interface DinerItem {
   itemId: string

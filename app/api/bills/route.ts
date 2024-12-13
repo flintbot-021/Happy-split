@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/app/utils/supabase';
+import { supabase } from '@/lib/utils';
 
 // Generate a 6-digit OTP
 function generateOTP() {

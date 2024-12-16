@@ -2,8 +2,11 @@
 
 import { useState } from 'react';
 import { CameraCapture } from '@/components/camera-capture';
-import { Edit2, Trash2, ClipboardCopy } from 'lucide-react';
+import { Edit2, Trash2, ClipboardCopy, AlertCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { BillSkeleton } from '@/components/bill-skeleton';
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 type ProcessingStatus = 'idle' | 'processing' | 'done' | 'error';
 
@@ -135,131 +138,130 @@ export default function CreateBill() {
 
   return (
     <main className="min-h-screen p-4">
-      <div className="max-w-md mx-auto">
-        <h1 className="text-2xl font-bold mb-6">Create Bill</h1>
-        
-        {status === 'idle' && !capturedImage && (
+      <div className="max-w-md mx-auto space-y-4">
+        {!capturedImage ? (
           <CameraCapture onCapture={handleCapture} />
-        )}
-
-        {status === 'processing' && (
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Processing your bill...</p>
-          </div>
-        )}
-
-        {status === 'error' && (
-          <div className="text-center py-8">
-            <p className="text-red-600 mb-4">Failed to process the image</p>
-            <button
-              onClick={() => {
-                setCapturedImage(null);
-                setStatus('idle');
-              }}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg"
-            >
-              Try Again
-            </button>
-          </div>
-        )}
-
-        {status === 'done' && extractedItems.length > 0 && (
+        ) : (
           <div className="space-y-4">
-            <div className="bg-white rounded-lg shadow p-4">
-              <h2 className="text-lg font-semibold mb-4">Extracted Items</h2>
-              <ul className="space-y-3">
-                {extractedItems.map((item, index) => (
-                  <li 
-                    key={index} 
-                    className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg"
+            {status === 'processing' ? (
+              <BillSkeleton />
+            ) : status === 'error' ? (
+              <Card className="p-4 border-destructive">
+                <div className="text-center space-y-2">
+                  <AlertCircle className="h-8 w-8 text-destructive mx-auto" />
+                  <h3 className="font-semibold">Failed to Process Bill</h3>
+                  <p className="text-sm text-muted-foreground">
+                    There was an error processing your bill. Please try again.
+                  </p>
+                  <Button
+                    onClick={() => {
+                      setCapturedImage(null);
+                      setStatus('idle');
+                    }}
+                    variant="outline"
                   >
-                    {editingItem === index ? (
-                      <div className="flex-1 space-y-2">
-                        <input
-                          type="text"
-                          value={item.name}
-                          onChange={e => handleUpdateItem(index, { name: e.target.value })}
-                          className="w-full p-1 border rounded"
-                        />
-                        <div className="flex gap-2">
-                          <input
-                            type="number"
-                            value={item.quantity}
-                            onChange={e => handleUpdateItem(index, { quantity: Number(e.target.value) })}
-                            className="w-20 p-1 border rounded"
-                          />
-                          <input
-                            type="number"
-                            value={item.price}
-                            onChange={e => handleUpdateItem(index, { price: Number(e.target.value) })}
-                            className="w-24 p-1 border rounded"
-                            step="0.01"
-                          />
-                          <select
-                            value={item.category}
-                            onChange={e => handleUpdateItem(index, { category: e.target.value as ExtractedItem['category'] })}
-                            className="p-1 border rounded"
-                          >
-                            <option value="Food">Food</option>
-                            <option value="Drinks">Drinks</option>
-                            <option value="Desserts">Desserts</option>
-                          </select>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex-1">
-                          <p className="font-medium">{item.name}</p>
-                          <p className="text-sm text-gray-500">
-                            {item.quantity}x · R{item.price.toFixed(2)} · {item.category}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => setEditingItem(index)}
-                            className="p-1 text-gray-600 hover:text-blue-600"
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteItem(index)}
-                            className="p-1 text-gray-600 hover:text-red-600"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-4 pt-4 border-t">
-                <div className="flex justify-between font-semibold">
-                  <span>Total</span>
-                  <span>R{totalAmount.toFixed(2)}</span>
+                    Retake Photo
+                  </Button>
+                </div>
+              </Card>
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-white rounded-lg shadow p-4">
+                  <h2 className="text-lg font-semibold mb-4">Extracted Items</h2>
+                  <ul className="space-y-3">
+                    {extractedItems.map((item, index) => (
+                      <li 
+                        key={index} 
+                        className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg"
+                      >
+                        {editingItem === index ? (
+                          <div className="flex-1 space-y-2">
+                            <input
+                              type="text"
+                              value={item.name}
+                              onChange={e => handleUpdateItem(index, { name: e.target.value })}
+                              className="w-full p-1 border rounded"
+                            />
+                            <div className="flex gap-2">
+                              <input
+                                type="number"
+                                value={item.quantity}
+                                onChange={e => handleUpdateItem(index, { quantity: Number(e.target.value) })}
+                                className="w-20 p-1 border rounded"
+                              />
+                              <input
+                                type="number"
+                                value={item.price}
+                                onChange={e => handleUpdateItem(index, { price: Number(e.target.value) })}
+                                className="w-24 p-1 border rounded"
+                                step="0.01"
+                              />
+                              <select
+                                value={item.category}
+                                onChange={e => handleUpdateItem(index, { category: e.target.value as ExtractedItem['category'] })}
+                                className="p-1 border rounded"
+                              >
+                                <option value="Food">Food</option>
+                                <option value="Drinks">Drinks</option>
+                                <option value="Desserts">Desserts</option>
+                              </select>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex-1">
+                              <p className="font-medium">{item.name}</p>
+                              <p className="text-sm text-gray-500">
+                                {item.quantity}x · R{item.price.toFixed(2)} · {item.category}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => setEditingItem(index)}
+                                className="p-1 text-gray-600 hover:text-blue-600"
+                              >
+                                <Edit2 size={16} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteItem(index)}
+                                className="p-1 text-gray-600 hover:text-red-600"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-4 pt-4 border-t">
+                    <div className="flex justify-between font-semibold">
+                      <span>Total</span>
+                      <span>R{totalAmount.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setCapturedImage(null);
+                      setStatus('idle');
+                    }}
+                    className="flex-1 p-3 bg-gray-600 text-white rounded-lg"
+                  >
+                    Retake Photo
+                  </button>
+
+                  <button
+                    onClick={handleSubmit}
+                    className="flex-1 p-3 bg-blue-600 text-white rounded-lg"
+                  >
+                    Save Bill
+                  </button>
                 </div>
               </div>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setCapturedImage(null);
-                  setStatus('idle');
-                }}
-                className="flex-1 p-3 bg-gray-600 text-white rounded-lg"
-              >
-                Retake Photo
-              </button>
-
-              <button
-                onClick={handleSubmit}
-                className="flex-1 p-3 bg-blue-600 text-white rounded-lg"
-              >
-                Save Bill
-              </button>
-            </div>
+            )}
           </div>
         )}
       </div>

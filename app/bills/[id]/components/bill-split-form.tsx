@@ -63,18 +63,22 @@ const formatPrice = (price: number) => {
 
 export function BillSplitForm({ bill }: { bill: Bill }) {
   const router = useRouter()
-  const [items, setItems] = useState<BillItem[]>(
-    bill.bill_items.map((item) => ({
+  
+  // Initialize items with server state
+  const [items, setItems] = useState<BillItem[]>(() => {
+    return bill.bill_items.map((item) => ({
       ...item,
       selected: false,
       myQuantity: 0,
-    }))
-  )
+    }));
+  });
+
   const [tipPercentage, setTipPercentage] = useState(0)
 
   const [isCustomTip, setIsCustomTip] = useState(false)
   const [isNameDialogOpen, setIsNameDialogOpen] = useState(false)
   const [dinerName, setDinerName] = useState("")
+  const [currentDiner, setCurrentDiner] = useState<string | null>(null);
 
   const tipPresets = [
     { label: '10%', value: 10 },
@@ -133,23 +137,22 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
 
   const handleLockIn = async () => {
     if (!selectedItems.length) return
-
     setIsNameDialogOpen(true)
   }
 
-  const handleSubmitDiner = async () => {
-    if (!dinerName.trim()) return
+  const resetSelections = () => {
+    setItems(items.map(item => ({
+      ...item,
+      selected: false,
+      myQuantity: 0
+    })));
+    setTipPercentage(0);
+    setIsCustomTip(false);
+    setDinerName("");
+  };
 
-    const dinerData = {
-      billId: bill.id,
-      name: dinerName,
-      items: selectedItems.map(item => ({
-        itemId: item.id,
-        quantity: item.myQuantity,
-      })),
-      tipAmount: tipAmount,
-      total: total,
-    }
+  const handleSubmitDiner = async () => {
+    if (!dinerName.trim()) return;
 
     try {
       const response = await fetch('/api/diners', {
@@ -157,25 +160,28 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(dinerData),
-      })
+        body: JSON.stringify({
+          billId: bill.id,
+          name: dinerName,
+          items: selectedItems.map(item => ({
+            itemId: item.id,
+            quantity: item.myQuantity,
+          })),
+          tipAmount,
+          total,
+        }),
+      });
 
-      if (!response.ok) throw new Error('Failed to save diner')
+      if (!response.ok) throw new Error('Failed to save diner');
 
-      localStorage.removeItem(`bill-${bill.id}-items`)
-      localStorage.removeItem(`bill-${bill.id}-tip`)
-
-      setIsNameDialogOpen(false)
-      router.refresh()
-
-      const summaryTab = document.querySelector('[value="summary"]') as HTMLButtonElement
-      if (summaryTab) {
-        summaryTab.click()
-      }
+      setIsNameDialogOpen(false);
+      setCurrentDiner(dinerName);
+      resetSelections();
+      router.refresh();
     } catch (error) {
-      console.error('Error saving diner:', error)
+      console.error('Error saving diner:', error);
     }
-  }
+  };
 
   // Calculate remaining quantities for each item
   const getRemainingQuantity = (itemId: string) => {
@@ -188,12 +194,15 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
     return item ? item.quantity - takenQuantity : 0
   }
 
-  // Get who selected this item
+  // Modify getSelectedBy to exclude current diner
   const getSelectedBy = (itemId: string): string[] => {
     return bill.diners
-      .filter(diner => diner.items.some(item => item.itemId === itemId))
-      .map(diner => diner.name)
-  }
+      .filter(diner => 
+        diner.name !== currentDiner && // Exclude current diner
+        diner.items.some(item => item.itemId === itemId)
+      )
+      .map(diner => diner.name);
+  };
 
   useEffect(() => {
     const channel = supabase
@@ -252,12 +261,23 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
     <div className="max-w-md mx-auto">
       <Card>
         <CardHeader>
-          <CardTitle>Select Your Items</CardTitle>
+          <CardTitle>
+            {currentDiner ? (
+              <div className="flex flex-col space-y-1">
+                <span className="text-sm text-muted-foreground">
+                  Showing items for
+                </span>
+                <span>{currentDiner}</span>
+              </div>
+            ) : (
+              "Select Your Items"
+            )}
+          </CardTitle>
           {outstandingAmount > 0 && (
             <div className="flex justify-between items-center mt-2 text-sm">
               <span className="text-muted-foreground">Outstanding Amount</span>
               <span className="text-red-600 font-medium">
-                R{outstandingAmount.toFixed(2)}
+                R{formatPrice(outstandingAmount)}
               </span>
             </div>
           )}
@@ -286,7 +306,8 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
                             onCheckedChange={(checked) => 
                               handleItemSelect(item.id, checked as boolean)
                             }
-                            disabled={isFullyTaken && !item.selected}
+                            // Only disable if taken by OTHER diners
+                            disabled={selectedBy.length > 0}
                             className="flex-shrink-0"
                           />
                           <Label 
@@ -345,16 +366,24 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
                             <div className="space-y-2">
                               <div className="flex justify-end">
                                 <div className="text-xs text-muted-foreground">
-                                  R{item.price.toFixed(2)} per item
+                                  R{formatPrice(item.price)} per item
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
                                 <Slider
                                   value={[item.myQuantity || 0]}
                                   min={0}
-                                  max={remainingQuantity + (item.myQuantity || 0)}
+                                  max={Math.min(
+                                    item.quantity,
+                                    remainingQuantity + (item.myQuantity || 0)
+                                  )}
                                   step={1}
-                                  onValueChange={(value) => handleQuantityChange(item.id, value)}
+                                  onValueChange={(value) => {
+                                    const newQuantity = value[0];
+                                    if (newQuantity <= item.quantity) {
+                                      handleQuantityChange(item.id, value);
+                                    }
+                                  }}
                                   className="flex-1"
                                 />
                               </div>
@@ -482,15 +511,35 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
             </Collapsible>
           </div>
 
-          {/* Lock In Button */}
-          {selectedItems.length > 0 && (
-            <Button
-              onClick={handleLockIn}
-              className="w-full bg-green-600 hover:bg-green-700 text-white"
-            >
-              Lock in my selections
-            </Button>
-          )}
+          {/* Lock In and Add Another Diner buttons */}
+          <div className="space-y-2">
+            {selectedItems.length > 0 && (
+              <Button
+                onClick={handleLockIn}
+                className="w-full bg-green-600 hover:bg-green-700 text-white"
+              >
+                Lock in selections {currentDiner ? `for ${currentDiner}` : ''}
+              </Button>
+            )}
+            
+            {currentDiner && outstandingAmount > 0 && !selectedItems.length && (
+              <div className="space-y-2">
+                <Separator />
+                <div className="text-center text-sm text-muted-foreground">
+                  Done with {currentDiner}&apos;s selections?
+                </div>
+                <Button
+                  onClick={() => {
+                    resetSelections();
+                    setCurrentDiner(null);
+                  }}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Add Another Diner
+                </Button>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 

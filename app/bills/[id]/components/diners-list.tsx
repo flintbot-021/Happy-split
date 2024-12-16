@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from '@/lib/utils'
-import { Trash2 } from "lucide-react"
+import { Trash2, Edit2 } from "lucide-react"
 import {
   AlertDialog,
   AlertDialogContent,
@@ -48,6 +48,7 @@ interface Bill {
 export function DinersList({ bill }: { bill: Bill }) {
   const router = useRouter()
   const [dinerToDelete, setDinerToDelete] = useState<string | null>(null)
+  const [editingDiner, setEditingDiner] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
@@ -126,6 +127,20 @@ export function DinersList({ bill }: { bill: Bill }) {
     }
   }
 
+  const handleDeleteItem = async (dinerId: string, itemId: string) => {
+    try {
+      const response = await fetch(`/api/diners/${dinerId}/items/${itemId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete item');
+      
+      router.refresh();
+    } catch (error) {
+      console.error('Error deleting item:', error);
+    }
+  };
+
   return (
     <div className="max-w-md mx-auto">
       <Card>
@@ -144,6 +159,12 @@ export function DinersList({ bill }: { bill: Bill }) {
                     <h3 className="font-semibold text-lg">{diner.name}</h3>
                     <div className="flex items-center gap-4">
                       <button
+                        onClick={() => setEditingDiner(editingDiner === diner.id ? null : diner.id)}
+                        className="text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </button>
+                      <button
                         onClick={() => setDinerToDelete(diner.id)}
                         className="text-muted-foreground hover:text-red-600 transition-colors"
                       >
@@ -156,17 +177,32 @@ export function DinersList({ bill }: { bill: Bill }) {
                   </div>
 
                   <div className="space-y-2">
-                    {diner.items.map((item) => (
-                      <div key={item.itemId} className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">
-                          {getItemName(item.itemId)}
-                          {item.quantity > 1 && ` (${item.quantity}x)`}
-                        </span>
-                        <span>
-                          R{(getItemPrice(item.itemId) * item.quantity).toFixed(2)}
-                        </span>
-                      </div>
-                    ))}
+                    {diner.items.map((item) => {
+                      const billItem = bill.bill_items.find(bi => bi.id === item.itemId);
+                      if (!billItem) return null;
+
+                      return (
+                        <div key={item.itemId} className="flex justify-between text-sm items-center">
+                          <span className="text-muted-foreground">
+                            {billItem.name}
+                            {item.quantity > 1 && ` (${item.quantity}x)`}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <span>
+                              R{(billItem.price * item.quantity).toFixed(2)}
+                            </span>
+                            {editingDiner === diner.id && (
+                              <button
+                                onClick={() => handleDeleteItem(diner.id, item.itemId)}
+                                className="text-muted-foreground hover:text-red-600 transition-colors p-1"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
 
                     {diner.tip_amount > 0 && (
                       <div className="flex justify-between text-sm text-green-600">

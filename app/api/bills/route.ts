@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/utils';
 
+interface BillItem {
+  name: string;
+  price: number;
+  quantity: number;
+  category: 'Food' | 'Drinks' | 'Desserts';
+}
+
 // Generate a 6-digit OTP
 function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -15,7 +22,8 @@ export async function POST(request: Request) {
     let body;
     try {
       body = JSON.parse(rawBody);
-    } catch (parseError) {
+    } catch (error) {
+      const parseError = error as Error;
       console.error('JSON parse error:', parseError);
       return NextResponse.json(
         { error: 'Invalid JSON data', details: parseError.message },
@@ -33,7 +41,7 @@ export async function POST(request: Request) {
     const otp = generateOTP();
 
     // Create the bill
-    const { data: bill, error: billError } = await supabase
+    const { error: billError } = await supabase
       .from('bills')
       .insert({
         id: otp,
@@ -52,7 +60,7 @@ export async function POST(request: Request) {
     }
 
     // Create bill items
-    const billItems = body.items.map((item: any) => ({
+    const billItems = body.items.map((item: BillItem) => ({
       bill_id: otp,
       name: item.name,
       price: item.price,

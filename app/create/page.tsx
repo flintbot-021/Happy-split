@@ -65,14 +65,26 @@ export default function CreateBill() {
 
   const handleSubmit = async () => {
     try {
-      const formData = new FormData()
-      formData.append('items', JSON.stringify(extractedItems))
-      formData.append('totalAmount', totalAmount.toString())
+      console.log('Sending data:', {
+        items: extractedItems,
+        totalAmount: Number(totalAmount)
+      });
 
       const response = await fetch('/api/bills', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          items: extractedItems,
+          totalAmount: Number(totalAmount)
+        })
       });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create bill');
+      }
 
       const { billId } = await response.json();
       router.push(`/bills/${billId}`);

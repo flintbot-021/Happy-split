@@ -6,24 +6,38 @@ function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-interface BillItem {
-  name: string;
-  price: number;
-  quantity: number;
-  category: string;
-}
-
 export async function POST(request: Request) {
   try {
-    const { items, totalAmount } = await request.json();
+    // Log the raw request body for debugging
+    const rawBody = await request.text();
+    console.log('Raw request body:', rawBody);
+
+    let body;
+    try {
+      body = JSON.parse(rawBody);
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      return NextResponse.json(
+        { error: 'Invalid JSON data', details: parseError.message },
+        { status: 400 }
+      );
+    }
+
+    if (!body.items || !Array.isArray(body.items) || typeof body.totalAmount !== 'number') {
+      return NextResponse.json(
+        { error: 'Invalid request data format' },
+        { status: 400 }
+      );
+    }
+
     const otp = generateOTP();
 
-    // Create the bill with OTP as the ID
-    const { error: billError } = await supabase
+    // Create the bill
+    const { data: bill, error: billError } = await supabase
       .from('bills')
       .insert({
-        id: otp,  // Using OTP as the ID for easy sharing
-        total_amount: totalAmount,
+        id: otp,
+        total_amount: body.totalAmount,
         status: 'pending'
       })
       .select()
@@ -31,11 +45,14 @@ export async function POST(request: Request) {
 
     if (billError) {
       console.error('Error creating bill:', billError);
-      throw billError;
+      return NextResponse.json(
+        { error: 'Failed to create bill', details: billError.message },
+        { status: 500 }
+      );
     }
 
-    // Create the bill items
-    const billItems = items.map((item: BillItem) => ({
+    // Create bill items
+    const billItems = body.items.map((item: any) => ({
       bill_id: otp,
       name: item.name,
       price: item.price,
@@ -49,17 +66,23 @@ export async function POST(request: Request) {
 
     if (itemsError) {
       console.error('Error creating bill items:', itemsError);
-      throw itemsError;
+      // Try to clean up the bill if items fail
+      await supabase.from('bills').delete().eq('id', otp);
+      
+      return NextResponse.json(
+        { error: 'Failed to create bill items', details: itemsError.message },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ 
       billId: otp,
-      shareCode: otp  // Same as billId for simplicity
+      shareCode: otp
     });
   } catch (error) {
-    console.error('Error saving bill:', error);
+    console.error('Unexpected error:', error);
     return NextResponse.json(
-      { error: 'Failed to save bill' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

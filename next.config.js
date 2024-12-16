@@ -5,7 +5,9 @@ const nextConfig = {
     domains: ['nesbrgmtxtpgkkqgjukv.supabase.co'],
   },
   experimental: {
-    serverActions: true,
+    serverActions: {
+      allowedOrigins: ['localhost:3000', 'happy-split.vercel.app']
+    }
   },
 }
 

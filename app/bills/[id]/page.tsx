@@ -27,7 +27,7 @@ export default async function BillPage({ params }: PageProps) {
 
   return (
     <div className="relative min-h-screen pb-16">
-      <div className="container mx-auto py-4">
+      <div className="py-4">
         <Tabs defaultValue="split" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="split">Split Bill</TabsTrigger>
@@ -44,7 +44,7 @@ export default async function BillPage({ params }: PageProps) {
 
       {/* Bill Code Banner */}
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t">
-        <div className="container mx-auto py-3 px-4 flex justify-between items-center">
+        <div className="py-3 px-4 flex justify-between items-center max-w-3xl mx-auto">
           <div className="text-sm text-muted-foreground">Bill Code</div>
           <div className="font-mono font-medium">{id}</div>
         </div>

@@ -53,6 +53,14 @@ interface Bill {
   diners: Diner[]
 }
 
+const formatPrice = (price: number) => {
+  return new Intl.NumberFormat('en-ZA', {
+    style: 'decimal',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(price);
+};
+
 export function BillSplitForm({ bill }: { bill: Bill }) {
   const router = useRouter()
   const [items, setItems] = useState<BillItem[]>(
@@ -241,7 +249,7 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
   }
 
   return (
-    <div className="p-4 max-w-md mx-auto">
+    <div className="max-w-md mx-auto">
       <Card>
         <CardHeader>
           <CardTitle>Select Your Items</CardTitle>
@@ -258,19 +266,20 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
           {Object.entries(groupedItems).map(([category, categoryItems]) => (
             <div key={category} className="space-y-4">
               <h2 className="font-semibold text-lg">{category}</h2>
-              <div className="space-y-4">
-                {categoryItems.map((item) => {
+              <div className="space-y-1">
+                {categoryItems.map((item, index) => {
                   const remainingQuantity = getRemainingQuantity(item.id)
                   const selectedBy = getSelectedBy(item.id)
                   const isFullyTaken = remainingQuantity === 0
 
                   return (
                     <div key={item.id} className={cn(
-                      "space-y-2",
+                      "space-y-2 p-2 rounded-lg",
+                      index % 2 === 0 ? "bg-transparent" : "bg-muted/50",
                       isFullyTaken && "opacity-50"
                     )}>
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 min-w-0 flex-1">
                           <Checkbox
                             id={item.id}
                             checked={item.selected}
@@ -278,26 +287,26 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
                               handleItemSelect(item.id, checked as boolean)
                             }
                             disabled={isFullyTaken && !item.selected}
+                            className="flex-shrink-0"
                           />
                           <Label 
                             htmlFor={item.id} 
                             className="font-medium flex items-center gap-2 flex-1 min-w-0"
                           >
-                            <span className="text-sm text-muted-foreground">
+                            <span className="text-sm text-muted-foreground flex-shrink-0">
                               {item.quantity > 1 
                                 ? (item.selected 
                                     ? `${item.myQuantity}/${remainingQuantity}` 
                                     : remainingQuantity)
                                 : "1"} ·
                             </span>
-                            <span className="flex items-center gap-2 min-w-0">
+                            <span className="flex items-center gap-2 min-w-0 flex-1">
                               <span className="truncate">{item.name}</span>
                               {selectedBy.length > 0 && (
-                                <div className="flex flex-wrap gap-1 ml-auto">
+                                <div className="flex flex-wrap gap-1 flex-shrink-0">
                                   {selectedBy.length > 1 ? (
                                     <>
                                       <Badge 
-                                        key={selectedBy[0]} 
                                         variant="secondary" 
                                         className="text-xs text-muted-foreground"
                                       >
@@ -307,12 +316,11 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
                                         variant="secondary" 
                                         className="text-xs text-muted-foreground"
                                       >
-                                        +{selectedBy.length - 1} others
+                                        +{selectedBy.length - 1}
                                       </Badge>
                                     </>
                                   ) : (
                                     <Badge 
-                                      key={selectedBy[0]} 
                                       variant="secondary" 
                                       className="text-xs text-muted-foreground"
                                     >
@@ -324,9 +332,9 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
                             </span>
                           </Label>
                         </div>
-                        <div className="text-right">
-                          <div className="font-medium">
-                            R{getItemTotal(item).toFixed(2)}
+                        <div className="text-right flex-shrink-0 ml-2">
+                          <div className="font-medium tabular-nums">
+                            R{formatPrice(getItemTotal(item))}
                           </div>
                         </div>
                       </div>
@@ -431,12 +439,12 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
           <div className="space-y-2">
             <div className="flex justify-between items-center text-sm text-muted-foreground">
               <span>Subtotal</span>
-              <span>R{subtotal.toFixed(2)}</span>
+              <span className="tabular-nums">R{formatPrice(subtotal)}</span>
             </div>
             {tipAmount > 0 && (
               <div className="flex justify-between items-center text-sm text-green-600">
                 <span>Tip</span>
-                <span>R{tipAmount.toFixed(2)}</span>
+                <span className="tabular-nums">R{formatPrice(tipAmount)}</span>
               </div>
             )}
             <Collapsible>

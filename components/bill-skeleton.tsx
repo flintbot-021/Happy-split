@@ -11,9 +11,9 @@ export function BillSkeleton() {
             <Loader2 className="h-5 w-5 animate-spin" />
             <p className="text-sm font-medium">Processing your bill</p>
           </div>
-          <p className="text-sm text-muted-foreground">
-            We're extracting items and prices from your image
-          </p>
+          <div className="text-center text-sm text-muted-foreground">
+            We&apos;re processing your bill...
+          </div>
         </div>
 
         <CardHeader>

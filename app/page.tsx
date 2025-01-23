@@ -1,14 +1,10 @@
 "use client";
 
-import { useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
-import { cn } from "@/lib/utils";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 
 export default function Home() {
   const router = useRouter();
@@ -20,26 +16,24 @@ export default function Home() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 4 * 1024 * 1024) {
-      alert('Image size must be less than 4MB');
-      return;
-    }
-
     try {
+      // Convert the file to base64
       const base64String = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => {
-          const result = reader.result as string;
-          const base64 = result.split(',')[1];
-          resolve(`data:${file.type};base64,${base64}`);
+          if (typeof reader.result === 'string') {
+            resolve(reader.result);
+          } else {
+            reject(new Error('Failed to read file'));
+          }
         };
-        reader.onerror = reject;
+        reader.onerror = () => reject(reader.error);
         reader.readAsDataURL(file);
       });
 
-      router.push('/create');
       // Store the image data in sessionStorage to be used in the create page
       sessionStorage.setItem('capturedImage', base64String);
+      router.push('/create');
     } catch (error: unknown) {
       console.error('Error uploading image:', error);
       setError('Failed to upload image. Please try again.');
@@ -53,70 +47,60 @@ export default function Home() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4">
-      <div className="w-full max-w-sm space-y-8">
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold">HappySplit</h1>
-          <p className="text-muted-foreground">Split bills effortlessly</p>
-        </div>
-
-        <input
-          type="file"
-          accept="image/*"
-          capture="environment"
-          onChange={handleFileUpload}
-          ref={fileInputRef}
-          className="hidden"
-        />
-        <Button
-          onClick={() => fileInputRef.current?.click()}
-          size="lg"
-          className="w-full"
-        >
-          Create Bill
-        </Button>
-
-        <div className="relative">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t" />
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-background px-2 text-muted-foreground">
-              or join a bill
-            </span>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <InputOTP
-            value={otp}
-            onChange={(value: string) => setOtp(value)}
-            maxLength={4}
-            render={({ slots }: { slots: any[] }) => (
-              <InputOTPGroup className="w-full grid grid-cols-4 gap-3">
-                {slots.map((slot, index: number) => (
-                  <InputOTPSlot
-                    key={index}
-                    {...slot}
-                    className={cn(
-                      "w-full aspect-square rounded-md border text-center text-3xl"
-                    )}
-                  />
-                ))}
-              </InputOTPGroup>
+    <main className="min-h-screen p-4">
+      <div className="max-w-md mx-auto space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Split a Bill</CardTitle>
+            <CardDescription>
+              Take a photo of your bill to get started
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {error && (
+              <div className="text-sm text-red-600">
+                {error}
+              </div>
             )}
-          />
-          
-          <Button
-            onClick={handleJoinBill}
-            variant="secondary"
-            size="lg"
-            className="w-full"
-            disabled={otp.length !== 4}
-          >
-            Join Bill
-          </Button>
-        </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full"
+            >
+              Take Photo
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Join a Bill</CardTitle>
+            <CardDescription>
+              Enter a bill code to join an existing split
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Input
+              placeholder="Enter bill code"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+            />
+            <Button
+              onClick={handleJoinBill}
+              className="w-full"
+              disabled={!otp}
+            >
+              Join Bill
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </main>
   );

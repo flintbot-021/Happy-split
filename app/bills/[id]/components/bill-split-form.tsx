@@ -378,25 +378,27 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
                         </div>
                       </div>
 
-                      {item.selected && item.quantity > 1 && remainingQuantity > 0 && (
+                      {item.selected && (
                         <div className="pl-6 space-y-2">
-                          <div className="space-y-2">
-                            <div className="flex justify-end">
-                              <div className="text-xs text-muted-foreground">
-                                R{formatPrice(item.price)} per item
+                          {item.quantity > 1 && remainingQuantity > 0 ? (
+                            <div className="space-y-2">
+                              <div className="flex justify-end">
+                                <div className="text-xs text-muted-foreground">
+                                  R{formatPrice(item.price)} per item
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Slider
+                                  value={[item.myQuantity || 0]}
+                                  min={0}
+                                  max={remainingQuantity}
+                                  step={1}
+                                  onValueChange={(value) => handleQuantityChange(item.id, value)}
+                                  className="flex-1"
+                                />
                               </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Slider
-                                value={[item.myQuantity || 0]}
-                                min={0}
-                                max={remainingQuantity}
-                                step={1}
-                                onValueChange={(value) => handleQuantityChange(item.id, value)}
-                                className="flex-1"
-                              />
-                            </div>
-                          </div>
+                          ) : null}
                         </div>
                       )}
                     </div>

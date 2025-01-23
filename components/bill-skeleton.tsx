@@ -1,10 +1,21 @@
 import { Card, CardHeader, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { Loader2 } from "lucide-react"
 
 export function BillSkeleton() {
   return (
     <div className="max-w-md mx-auto">
-      <Card>
+      <Card className="relative">
+        <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-white/80">
+          <div className="flex items-center gap-2 text-primary">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <p className="text-sm font-medium">Processing your bill</p>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            We're extracting items and prices from your image
+          </p>
+        </div>
+
         <CardHeader>
           <div className="h-6 w-32 bg-muted animate-pulse rounded" />
         </CardHeader>

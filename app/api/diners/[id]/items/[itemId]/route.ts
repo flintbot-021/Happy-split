@@ -2,16 +2,17 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/utils';
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string; itemId: string } }
+  request: Request
 ) {
   try {
-    const { id: dinerId, itemId } = params;
+    const segments = request.url.split('/');
+    const itemId = segments.pop();
+    const id = segments[segments.length - 2];
 
     const { error } = await supabase
-      .from('diner_items')  // Adjust table name based on your schema
+      .from('diner_items')
       .delete()
-      .match({ diner_id: dinerId, item_id: itemId });
+      .match({ diner_id: id, item_id: itemId });
 
     if (error) throw error;
 

@@ -88,14 +88,6 @@ export function DinersList({ bill }: { bill: Bill }) {
     }
   }, [bill.id, router])
 
-  const getItemName = (itemId: string) => {
-    return bill.bill_items.find(item => item.id === itemId)?.name || 'Unknown Item'
-  }
-
-  const getItemPrice = (itemId: string) => {
-    return bill.bill_items.find(item => item.id === itemId)?.price || 0
-  }
-
   // Calculate totals
   const totalPaid = bill.diners.reduce((sum, diner) => sum + diner.total, 0)
   const billTotal = bill.total_amount

@@ -1,3 +1,6 @@
+import { Card, CardHeader, CardContent } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
+
 export function BillSkeleton() {
   return (
     <div className="max-w-md mx-auto">

@@ -378,27 +378,25 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
                         </div>
                       </div>
 
-                      {item.selected && (
+                      {item.selected && item.quantity > 1 && remainingQuantity > 0 && (
                         <div className="pl-6 space-y-2">
-                          {item.quantity > 1 && remainingQuantity > 0 ? (
-                            <div className="space-y-2">
-                              <div className="flex justify-end">
-                                <div className="text-xs text-muted-foreground">
-                                  R{formatPrice(item.price)} per item
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Slider
-                                  value={[item.myQuantity || 0]}
-                                  min={0}
-                                  max={remainingQuantity + (item.myQuantity || 0)}
-                                  step={1}
-                                  onValueChange={(value) => handleQuantityChange(item.id, value)}
-                                  className="flex-1"
-                                />
+                          <div className="space-y-2">
+                            <div className="flex justify-end">
+                              <div className="text-xs text-muted-foreground">
+                                R{formatPrice(item.price)} per item
                               </div>
                             </div>
-                          ) : null}
+                            <div className="flex items-center gap-2">
+                              <Slider
+                                value={[item.myQuantity || 0]}
+                                min={0}
+                                max={remainingQuantity}
+                                step={1}
+                                onValueChange={(value) => handleQuantityChange(item.id, value)}
+                                className="flex-1"
+                              />
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -476,28 +474,17 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
 
           {/* Total Section */}
           <div className="space-y-2">
-            <div className="flex justify-between items-center text-sm text-muted-foreground">
-              <span>My Selections</span>
-              <span className="tabular-nums">R{formatPrice(subtotal)}</span>
-            </div>
-            {tipAmount > 0 && (
-              <div className="flex justify-between items-center text-sm text-green-600">
-                <span>Tip</span>
-                <span className="tabular-nums">R{formatPrice(tipAmount)}</span>
-              </div>
-            )}
             <Collapsible>
-              <div className="flex justify-between items-center pt-2 border-t">
-                <div>
-                  <div className="font-medium">Total</div>
-                  <CollapsibleTrigger className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <div className="flex justify-between items-center text-sm text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <span>My selection</span>
+                  <span>•</span>
+                  <span>{selectedItems.length}</span>
+                  <CollapsibleTrigger className="hover:text-foreground transition-colors">
                     <ChevronDown className="h-4 w-4" />
-                    {selectedItems.length} items selected
                   </CollapsibleTrigger>
                 </div>
-                <div className="text-lg font-bold">
-                  R{total.toFixed(2)}
-                </div>
+                <span className="tabular-nums">R{formatPrice(subtotal)}</span>
               </div>
               <CollapsibleContent className="pt-2">
                 <div className="space-y-1 text-sm text-muted-foreground">
@@ -519,6 +506,19 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
                 </div>
               </CollapsibleContent>
             </Collapsible>
+
+            {tipAmount > 0 && (
+              <div className="flex justify-between items-center text-sm text-green-600">
+                <span>Tip</span>
+                <span className="tabular-nums">R{formatPrice(tipAmount)}</span>
+              </div>
+            )}
+            <div className="flex justify-between items-center pt-2">
+              <div className="font-medium">Total</div>
+              <div className="text-lg font-bold">
+                R{total.toFixed(2)}
+              </div>
+            </div>
           </div>
 
           {/* Lock In and Add Another Diner buttons */}

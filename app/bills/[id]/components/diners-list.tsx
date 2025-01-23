@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button"
 import { ChevronDown } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Badge } from "@/components/ui/badge"
+import { cn } from "@/lib/utils"
 
 interface DinerItem {
   itemId: string
@@ -169,15 +170,20 @@ export function DinersList({ bill }: { bill: Bill }) {
                   </div>
 
                   <div className="space-y-2">
-                    {diner.items.map((item) => {
+                    {diner.items.map((item, index) => {
                       const billItem = bill.bill_items.find(bi => bi.id === item.itemId);
                       if (!billItem) return null;
 
                       return (
-                        <div key={item.itemId} className="flex justify-between text-sm items-center">
+                        <div 
+                          key={item.itemId} 
+                          className={cn(
+                            "flex justify-between text-sm items-center p-2 rounded-lg",
+                            index % 2 === 0 ? "bg-transparent" : "bg-muted/50"
+                          )}
+                        >
                           <span className="text-muted-foreground">
-                            {billItem.name}
-                            {item.quantity > 1 && ` (${item.quantity}x)`}
+                            {item.quantity}x {billItem.name}
                           </span>
                           <div className="flex items-center gap-2">
                             <span>
@@ -198,7 +204,12 @@ export function DinersList({ bill }: { bill: Bill }) {
 
                     {diner.tip_amount > 0 && (
                       <div className="flex justify-between text-sm text-green-600">
-                        <span>Tip</span>
+                        <div className="flex items-center gap-2">
+                          <span>Tip</span>
+                          <Badge variant="secondary" className="text-xs">
+                            {((diner.tip_amount / (diner.total - diner.tip_amount)) * 100).toFixed(1)}%
+                          </Badge>
+                        </div>
                         <span>R{diner.tip_amount.toFixed(2)}</span>
                       </div>
                     )}

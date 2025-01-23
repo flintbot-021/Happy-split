@@ -29,13 +29,18 @@ export async function POST(request: Request) {
 
     const response = await client.chat.completions.create({
       model: "gpt-4o-mini",
+      max_tokens: 1000,  // Limit response length since we only need structured data
       messages: [
+        {
+          role: "system",
+          content: SYSTEM_PROMPT,
+        },
         {
           role: "user",
           content: [
             {
               type: "text",
-              text: SYSTEM_PROMPT,
+              text: "Extract the items from this receipt.",
             },
             {
               type: "image_url",

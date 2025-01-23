@@ -21,6 +21,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ChevronDown } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { supabase } from '@/lib/utils'
+import { analytics } from '@/lib/posthog'
 
 interface BillItem {
   id: string
@@ -87,23 +88,50 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
   ]
 
   const handleItemSelect = (itemId: string, checked: boolean) => {
-    setItems(items.map(item => 
-      item.id === itemId 
+    const item = items.find(i => i.id === itemId)
+    if (!item) return
+
+    setItems(items.map(i => 
+      i.id === itemId 
         ? { 
-            ...item, 
+            ...i, 
             selected: checked, 
-            myQuantity: checked ? (item.quantity === 1 ? 1 : 0) : 0 
+            myQuantity: checked ? (i.quantity === 1 ? 1 : 0) : 0 
           }
-        : item
+        : i
     ))
+
+    if (checked) {
+      analytics.itemAssigned({
+        billId: bill.id,
+        itemName: item.name,
+        itemPrice: item.price,
+        assignedTo: currentDiner || 'anonymous',
+        quantity: item.quantity === 1 ? 1 : 0
+      })
+    }
   }
 
   const handleQuantityChange = (itemId: string, value: number[]) => {
-    setItems(items.map(item =>
-      item.id === itemId
-        ? { ...item, myQuantity: value[0] }
-        : item
+    const item = items.find(i => i.id === itemId)
+    if (!item) return
+
+    const previousQuantity = item.myQuantity || 0
+    const newQuantity = value[0]
+
+    setItems(items.map(i =>
+      i.id === itemId
+        ? { ...i, myQuantity: newQuantity }
+        : i
     ))
+
+    analytics.quantityAdjusted({
+      billId: bill.id,
+      itemName: item.name,
+      previousQuantity,
+      newQuantity,
+      adjustedBy: currentDiner || 'anonymous'
+    })
   }
 
   const subtotal = items.reduce((sum, item) => 
@@ -127,8 +155,16 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
   const selectedItems = items.filter(i => i.selected)
 
   const handleTipSelect = (value: number) => {
+    const previousPercentage = tipPercentage
     setTipPercentage(value)
     setIsCustomTip(false)
+    
+    analytics.tipAdjusted({
+      billId: bill.id,
+      previousPercentage,
+      newPercentage: value,
+      adjustedBy: currentDiner || 'anonymous'
+    })
   }
 
   const handleCustomTip = () => {
@@ -156,8 +192,17 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
 
     try {
       const endpoint = existingDiner 
-        ? `/api/diners/${existingDiner.id}/items` // Update existing diner's items
-        : '/api/diners'; // Create new diner
+        ? `/api/diners/${existingDiner.id}/items`
+        : '/api/diners';
+
+      // Track selection locking
+      analytics.selectionLocked({
+        billId: bill.id,
+        participantName: existingDiner ? existingDiner.name : dinerName,
+        itemCount: selectedItems.length,
+        totalAmount: total,
+        tipAmount
+      })
 
       const response = await fetch(endpoint, {
         method: existingDiner ? 'PUT' : 'POST',
@@ -184,6 +229,14 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
       });
 
       if (!response.ok) throw new Error('Failed to save selections');
+
+      // Track bill joining for new diners
+      if (!existingDiner) {
+        analytics.billJoined({
+          billId: bill.id,
+          participantName: dinerName
+        })
+      }
 
       setIsNameDialogOpen(false);
       resetSelections();

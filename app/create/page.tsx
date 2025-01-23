@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Edit2, Trash2, AlertCircle, UtensilsCrossed, Wine, Check, X } from 'lucide-react';
 import { Separator } from "@/components/ui/separator";
+import { analytics } from '@/lib/posthog'
 
 type ProcessingStatus = 'idle' | 'processing' | 'done' | 'error';
 type Category = 'Food' | 'Drinks' | 'Desserts';
@@ -90,25 +91,36 @@ export default function CreateBill() {
       const response = await fetch('/api/bills', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          items: extractedItems,
-          totalAmount: Number(totalAmount)
-        })
-      });
+          items: extractedItems.map(item => ({
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity,
+            category: item.category
+          }))
+        }),
+      })
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to create bill');
+        throw new Error('Failed to create bill')
       }
 
-      const { billId } = await response.json();
-      router.push(`/bills/${billId}`);
+      const bill = await response.json()
+
+      // Track bill creation
+      analytics.billCreated({
+        totalAmount: extractedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+        itemCount: extractedItems.length,
+        creatorName: 'anonymous' // You might want to add user authentication later
+      })
+
+      router.push(`/bills/${bill.id}`)
     } catch (error) {
-      console.error('Error creating bill:', error);
+      console.error('Error creating bill:', error)
     }
-  };
+  }
 
   const groupedItems = extractedItems.reduce((acc, item) => {
     const category = item.category || 'Food';

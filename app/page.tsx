@@ -14,6 +14,7 @@ export default function Home() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [otp, setOtp] = useState<string>("");
+  const [error, setError] = useState<string | null>(null);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -39,9 +40,9 @@ export default function Home() {
       router.push('/create');
       // Store the image data in sessionStorage to be used in the create page
       sessionStorage.setItem('capturedImage', base64String);
-    } catch (error) {
-      console.error('Error processing file:', error);
-      alert('Failed to process image');
+    } catch (error: unknown) {
+      console.error('Error uploading image:', error);
+      setError('Failed to upload image. Please try again.');
     }
   };
 

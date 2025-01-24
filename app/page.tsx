@@ -3,8 +3,8 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 export default function Home() {
   const router = useRouter();
@@ -40,67 +40,79 @@ export default function Home() {
     }
   };
 
-  const handleJoinBill = () => {
-    if (otp.length === 4) {
-      router.push(`/bills/${otp}`);
+  const handleComplete = (value: string) => {
+    if (value.length === 4) {
+      router.push(`/bills/${value}`);
     }
   };
 
   return (
-    <main className="min-h-screen p-4">
-      <div className="max-w-md mx-auto space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Split a Bill</CardTitle>
-            <CardDescription>
-              Take a photo of your bill to get started
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {error && (
-              <div className="text-sm text-red-600">
-                {error}
-              </div>
-            )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={handleFileUpload}
-              className="hidden"
-            />
-            <Button
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full"
-            >
-              Take Photo
-            </Button>
-          </CardContent>
-        </Card>
+    <main className="min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-md space-y-8">
+        <div className="space-y-2 text-center">
+          <h1 className="text-3xl font-bold">Happy Pay</h1>
+          <p className="text-muted-foreground">
+            Split your bill with friends, hassle-free
+          </p>
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Join a Bill</CardTitle>
-            <CardDescription>
-              Enter a bill code to join an existing split
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Input
-              placeholder="Enter bill code"
+        <div className="space-y-6">
+          {error && (
+            <div className="text-sm text-red-600 text-center">
+              {error}
+            </div>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+          <Button
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full bg-[#0F172A] hover:bg-[#0F172A]/90 text-white"
+            size="lg"
+          >
+            Upload Bill
+          </Button>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                OR
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <InputOTP
+              maxLength={4}
               value={otp}
-              onChange={(e) => setOtp(e.target.value)}
+              onChange={setOtp}
+              onComplete={handleComplete}
+              containerClassName="justify-between"
+              render={({ slots }) => (
+                <InputOTPGroup className="w-full grid grid-cols-4 gap-3">
+                  {slots.map((slot, index) => (
+                    <InputOTPSlot 
+                      key={index} 
+                      {...slot} 
+                      className="w-full h-[72px] text-2xl border border-gray-200 focus:border-gray-400 focus:ring-gray-400 rounded-none"
+                    />
+                  ))}
+                </InputOTPGroup>
+              )}
             />
-            <Button
-              onClick={handleJoinBill}
-              className="w-full"
-              disabled={!otp}
-            >
-              Join Bill
-            </Button>
-          </CardContent>
-        </Card>
+            <p className="text-xs text-center text-muted-foreground">
+              Enter a bill code to join
+            </p>
+          </div>
+        </div>
       </div>
     </main>
   );

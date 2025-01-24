@@ -18,7 +18,7 @@ import { Slider } from "@/components/ui/slider"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, Users } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { supabase } from '@/lib/utils'
 import { analytics } from '@/lib/posthog'
@@ -346,33 +346,27 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
   return (
     <div className="max-w-md mx-auto">
       <Card>
-        <CardHeader>
-          <CardTitle>
-            {currentDiner ? (
-              <div className="flex flex-col space-y-1">
-                <span className="text-sm text-muted-foreground">
-                  Selecting items for
-                </span>
-                <span>{currentDiner}</span>
-              </div>
-            ) : (
-              <div className="flex flex-col space-y-1">
-                <span>Select Your Items</span>
-                {bill.diners.length > 0 && (
-                  <span className="text-sm text-muted-foreground">
-                    {bill.diners.length} {bill.diners.length === 1 ? 'person has' : 'people have'} joined
-                  </span>
-                )}
-              </div>
+        <CardHeader className="space-y-4">
+          <div className="flex flex-row items-start justify-between">
+            <CardTitle>Select Your Items</CardTitle>
+            {bill.diners.length > 0 && (
+              <Badge variant="secondary" className="flex items-center gap-1">
+                <Users className="h-3 w-3" />
+                {bill.diners.length}
+              </Badge>
             )}
-          </CardTitle>
+          </div>
+          
           {outstandingAmount > 0 && (
-            <div className="flex justify-between items-center mt-2 text-sm">
-              <span className="text-muted-foreground">Outstanding Amount</span>
-              <span className="text-red-600 font-medium">
-                R{formatPrice(outstandingAmount)}
-              </span>
-            </div>
+            <>
+              <Separator />
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-muted-foreground">Outstanding Amount</span>
+                <span className="text-red-600 font-medium">
+                  R{formatPrice(outstandingAmount)}
+                </span>
+              </div>
+            </>
           )}
         </CardHeader>
         <CardContent className="space-y-8">

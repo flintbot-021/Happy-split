@@ -3,7 +3,6 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 export default function Home() {
@@ -109,7 +108,7 @@ export default function Home() {
               )}
             />
             <p className="text-xs text-center text-muted-foreground">
-              Enter a bill code to join
+              Enter a code to join a bill
             </p>
           </div>
         </div>

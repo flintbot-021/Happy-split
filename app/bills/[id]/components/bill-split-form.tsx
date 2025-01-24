@@ -18,7 +18,7 @@ import { Slider } from "@/components/ui/slider"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { ChevronDown, Users } from "lucide-react"
+import { ChevronDown, Users, Edit2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { supabase } from '@/lib/utils'
 import { analytics } from '@/lib/posthog'
@@ -343,18 +343,25 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
       : item.price
   }
 
+  const handleEditBill = () => {
+    router.push(`/create?billId=${bill.id}`);
+  };
+
   return (
     <div className="max-w-md mx-auto">
       <Card>
         <CardHeader className="space-y-4">
           <div className="flex flex-row items-start justify-between">
             <CardTitle>Select Your Items</CardTitle>
-            {bill.diners.length > 0 && (
-              <Badge variant="secondary" className="flex items-center gap-1">
-                <Users className="h-3 w-3" />
-                {bill.diners.length}
-              </Badge>
-            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground"
+              onClick={handleEditBill}
+            >
+              <Edit2 className="h-4 w-4 mr-1" />
+              Edit Bill
+            </Button>
           </div>
           
           {outstandingAmount > 0 && (

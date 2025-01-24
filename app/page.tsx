@@ -95,18 +95,16 @@ export default function Home() {
               onChange={setOtp}
               onComplete={handleComplete}
               containerClassName="justify-between"
-              render={({ slots }) => (
-                <InputOTPGroup className="w-full grid grid-cols-4 gap-3">
-                  {slots.map((slot, index) => (
-                    <InputOTPSlot 
-                      key={index} 
-                      {...slot} 
-                      className="w-full h-[72px] text-2xl border border-gray-200 focus:border-gray-400 focus:ring-gray-400 rounded-none"
-                    />
-                  ))}
-                </InputOTPGroup>
-              )}
-            />
+            >
+              <InputOTPGroup className="w-full grid grid-cols-4 gap-3">
+                {Array.from({ length: 4 }, (_, i) => (
+                  <InputOTPSlot 
+                    key={i}
+                    className="w-full h-[72px] text-2xl border border-gray-200 focus:border-gray-400 focus:ring-gray-400 rounded-none"
+                  />
+                ))}
+              </InputOTPGroup>
+            </InputOTP>
             <p className="text-xs text-center text-muted-foreground">
               Enter a code to join a bill
             </p>

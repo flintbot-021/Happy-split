@@ -1,16 +1,20 @@
 "use client"
 
 import * as React from "react"
-import { OTPInput, SlotProps } from "input-otp"
+import { OTPInput, OTPInputContext, OTPInputProps } from "input-otp"
 import { cn } from "@/lib/utils"
 
 const InputOTP = React.forwardRef<
   React.ElementRef<typeof OTPInput>,
-  React.ComponentPropsWithoutRef<typeof OTPInput>
->(({ className, ...props }, ref) => (
+  OTPInputProps & { containerClassName?: string }
+>(({ className, containerClassName, ...props }, ref) => (
   <OTPInput
     ref={ref}
-    containerClassName={cn("flex items-center gap-2", className)}
+    containerClassName={cn(
+      "flex items-center gap-2 has-[:disabled]:opacity-50",
+      containerClassName
+    )}
+    className={cn("disabled:cursor-not-allowed", className)}
     {...props}
   />
 ))
@@ -22,20 +26,22 @@ const InputOTPGroup = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex items-center", className)}
+    className={cn("flex items-center gap-2", className)}
     {...props}
   />
 ))
 InputOTPGroup.displayName = "InputOTPGroup"
 
-interface ExtendedSlotProps extends SlotProps {
-  className?: string
+type InputOTPSlotProps = React.ComponentPropsWithoutRef<"div"> & {
+  char?: string | null
+  hasFakeCaret?: boolean
+  isActive?: boolean
 }
 
 const InputOTPSlot = React.forwardRef<
   React.ElementRef<"div">,
-  ExtendedSlotProps
->(({ char, hasFakeCaret, isActive, className, ...props }, ref) => {
+  InputOTPSlotProps
+>(({ className, char, hasFakeCaret, isActive, ...props }, ref) => {
   return (
     <div
       ref={ref}
@@ -59,4 +65,19 @@ const InputOTPSlot = React.forwardRef<
 })
 InputOTPSlot.displayName = "InputOTPSlot"
 
-export { InputOTP, InputOTPGroup, InputOTPSlot } 
+const InputOTPSeparator = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div 
+    ref={ref} 
+    role="separator" 
+    className={cn("flex items-center", className)}
+    {...props}
+  >
+    <div className="w-2 h-2 rounded-full bg-muted" />
+  </div>
+))
+InputOTPSeparator.displayName = "InputOTPSeparator"
+
+export { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } 

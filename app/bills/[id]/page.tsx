@@ -2,6 +2,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BillSplitForm } from "./components/bill-split-form"
 import { DinersList } from "./components/diners-list"
 import { supabase } from '@/app/utils/supabase'
+import { analytics } from '@/lib/posthog'
+import { notFound } from 'next/navigation'
 
 async function getBillWithDiners(billId: string) {
   const { data: bill } = await supabase
@@ -24,6 +26,19 @@ interface PageProps {
 export default async function BillPage({ params }: PageProps) {
   const { id } = await params
   const bill = await getBillWithDiners(id)
+  if (!bill) notFound()
+
+  // Calculate total paid and outstanding amount
+  const totalPaid = bill.diners.reduce((sum: number, diner: { total: number }) => sum + diner.total, 0)
+  const outstandingAmount = bill.total_amount - totalPaid
+
+  // Track summary viewing
+  analytics.summaryViewed({
+    billId: bill.id,
+    outstandingAmount,
+    participantCount: bill.diners.length,
+    isComplete: outstandingAmount === 0
+  })
 
   return (
     <div className="relative min-h-screen pb-16">

@@ -1,13 +1,11 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/utils';
 
-export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  const { id } = params;
-
+export async function PUT(request: Request) {
   try {
+    const url = new URL(request.url);
+    const segments = url.pathname.split('/');
+    const id = segments[segments.length - 2];
     const { items, tipAmount, total } = await request.json();
 
     // Update diner's items

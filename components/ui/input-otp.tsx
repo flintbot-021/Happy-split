@@ -28,9 +28,13 @@ const InputOTPGroup = React.forwardRef<
 ))
 InputOTPGroup.displayName = "InputOTPGroup"
 
+interface ExtendedSlotProps extends SlotProps {
+  className?: string
+}
+
 const InputOTPSlot = React.forwardRef<
   React.ElementRef<"div">,
-  SlotProps
+  ExtendedSlotProps
 >(({ char, hasFakeCaret, isActive, className, ...props }, ref) => {
   return (
     <div

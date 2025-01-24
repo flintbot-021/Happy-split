@@ -1,51 +1,90 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/utils';
 
+interface Item {
+  itemId: string;
+  quantity: number;
+}
+
+interface RequestBody {
+  items: Item[];
+  tipAmount: number;
+  total: number;
+}
+
 export async function PUT(request: Request) {
   try {
     const url = new URL(request.url);
     const segments = url.pathname.split('/');
-    const id = segments[segments.length - 2];
-    const { items, tipAmount, total } = await request.json();
+    const dinerId = segments[segments.length - 2];
+    const body = await request.json() as RequestBody;
 
-    // Update diner's items
-    const { error: itemsError } = await supabase
-      .from('diner_items')
-      .delete()
-      .eq('diner_id', id);
+    console.log('Processing request for diner:', dinerId);
+    console.log('Request body:', body);
 
-    if (itemsError) throw itemsError;
+    // First get the diner's current items
+    const { data: diner, error: fetchError } = await supabase
+      .from('diners')
+      .select('items')
+      .eq('id', dinerId)
+      .single();
 
-    if (items.length > 0) {
-      const { error: insertError } = await supabase
-        .from('diner_items')
-        .insert(
-          items.map((item: { itemId: string; quantity: number }) => ({
-            diner_id: id,
-            item_id: item.itemId,
-            quantity: item.quantity,
-          }))
-        );
-
-      if (insertError) throw insertError;
+    if (fetchError) {
+      console.error('Error fetching diner:', fetchError);
+      return NextResponse.json(
+        { error: 'Failed to fetch diner', details: fetchError.message },
+        { status: 500 }
+      );
     }
 
-    // Update diner's tip and total
-    const { error: dinerError } = await supabase
+    // Merge existing items with new ones
+    const existingItems = (diner?.items || []) as Item[];
+    const newItems = body.items;
+
+    // Create a map of existing items for easy lookup
+    const itemsMap = new Map(existingItems.map(item => [item.itemId, item]));
+
+    // Update or add new items
+    newItems.forEach(item => {
+      const existing = itemsMap.get(item.itemId);
+      if (existing) {
+        existing.quantity += item.quantity;
+      } else {
+        itemsMap.set(item.itemId, item);
+      }
+    });
+
+    // Convert map back to array
+    const mergedItems = Array.from(itemsMap.values());
+
+    // Update the diner with merged items and totals
+    const dinerUpdate = {
+      items: mergedItems,
+      tip_amount: body.tipAmount,
+      total: body.total
+    };
+
+    console.log('Updating diner with:', dinerUpdate);
+
+    const { error: updateError } = await supabase
       .from('diners')
-      .update({
-        tip_amount: tipAmount,
-        total: total,
-      })
-      .eq('id', id);
+      .update(dinerUpdate)
+      .eq('id', dinerId);
 
-    if (dinerError) throw dinerError;
+    if (updateError) {
+      console.error('Error updating diner:', updateError);
+      return NextResponse.json(
+        { error: 'Failed to update diner', details: updateError.message },
+        { status: 500 }
+      );
+    }
 
+    console.log('Diner updated successfully');
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error updating diner items:', error);
+    console.error('Unexpected error:', error);
     return NextResponse.json(
-      { error: 'Failed to update diner items' },
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

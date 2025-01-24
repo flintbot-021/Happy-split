@@ -1,4 +1,5 @@
 import './globals.css'
+import { Toaster } from 'sonner'
 
 export default function RootLayout({
   children,
@@ -20,6 +21,7 @@ export default function RootLayout({
         }} />
       </head>
       <body className="max-w-3xl mx-auto px-4 sm:px-6">
+        <Toaster position="top-center" />
         {children}
       </body>
     </html>

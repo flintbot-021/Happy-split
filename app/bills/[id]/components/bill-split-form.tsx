@@ -22,6 +22,7 @@ import { ChevronDown } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { supabase } from '@/lib/utils'
 import { analytics } from '@/lib/posthog'
+import { toast } from "sonner"
 
 interface BillItem {
   id: string
@@ -188,7 +189,10 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
   };
 
   const handleSubmitDiner = async (existingDiner?: Diner) => {
-    if (!dinerName.trim()) return;
+    if (!existingDiner && !dinerName.trim()) {
+      toast.error('Please enter a name');
+      return;
+    }
 
     try {
       const endpoint = existingDiner 
@@ -202,40 +206,57 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
         itemCount: selectedItems.length,
         totalAmount: total,
         tipAmount
-      })
+      });
+
+      const selectedItemsData = selectedItems
+        .filter(item => item.selected && (item.myQuantity || 0) > 0)
+        .map(item => ({
+          itemId: item.id,
+          quantity: item.myQuantity || 0,
+        }));
+
+      if (selectedItemsData.length === 0) {
+        toast.error('Please select at least one item and specify quantities');
+        return;
+      }
+
+      const requestBody = existingDiner ? {
+        items: selectedItemsData,
+        tipAmount: Number(tipAmount.toFixed(2)),
+        total: Number(total.toFixed(2)),
+      } : {
+        billId: bill.id,
+        name: dinerName.trim(),
+        items: selectedItemsData,
+        tipAmount: Number(tipAmount.toFixed(2)),
+        total: Number(total.toFixed(2)),
+      };
+
+      console.log('Sending request:', {
+        endpoint,
+        method: existingDiner ? 'PUT' : 'POST',
+        body: requestBody
+      });
 
       const response = await fetch(endpoint, {
         method: existingDiner ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(existingDiner ? {
-          items: selectedItems.map(item => ({
-            itemId: item.id,
-            quantity: item.myQuantity,
-          })),
-          tipAmount,
-          total,
-        } : {
-          billId: bill.id,
-          name: dinerName,
-          items: selectedItems.map(item => ({
-            itemId: item.id,
-            quantity: item.myQuantity,
-          })),
-          tipAmount,
-          total,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
-      if (!response.ok) throw new Error('Failed to save selections');
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to save selections');
+      }
 
       // Track bill joining for new diners
       if (!existingDiner) {
         analytics.billJoined({
           billId: bill.id,
           participantName: dinerName
-        })
+        });
       }
 
       setIsNameDialogOpen(false);
@@ -244,6 +265,7 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
       router.refresh();
     } catch (error) {
       console.error('Error saving selections:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to save selections');
     }
   };
 
@@ -612,33 +634,7 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
                         key={diner.id}
                         variant="outline"
                         className="w-full justify-start font-normal"
-                        onClick={async () => {
-                          try {
-                            const response = await fetch(`/api/diners/${diner.id}/items`, {
-                              method: 'PUT',
-                              headers: {
-                                'Content-Type': 'application/json',
-                              },
-                              body: JSON.stringify({
-                                items: selectedItems.map(item => ({
-                                  itemId: item.id,
-                                  quantity: item.myQuantity,
-                                })),
-                                tipAmount,
-                                total,
-                              }),
-                            });
-
-                            if (!response.ok) throw new Error('Failed to save selections');
-
-                            setIsNameDialogOpen(false);
-                            resetSelections();
-                            setCurrentDiner(null);
-                            router.refresh();
-                          } catch (error) {
-                            console.error('Error saving selections:', error);
-                          }
-                        }}
+                        onClick={() => handleSubmitDiner(diner)}
                       >
                         {diner.name}
                       </Button>

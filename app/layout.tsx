@@ -1,5 +1,29 @@
 import './globals.css'
 import { Toaster } from 'sonner'
+import type { Metadata, Viewport } from "next"
+import { Inter } from "next/font/google"
+import Script from 'next/script'
+
+const inter = Inter({ subsets: ["latin"] })
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
+  themeColor: "#0F172A"
+}
+
+export const metadata: Metadata = {
+  title: "Happy Split",
+  description: "Split your bill with friends, hassle-free",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Happy Split"
+  }
+}
 
 export default function RootLayout({
   children,
@@ -19,8 +43,31 @@ export default function RootLayout({
             })
           `
         }} />
+        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <Script
+          id="sw-registration"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(
+                    function(registration) {
+                      console.log('Service Worker registration successful');
+                    },
+                    function(err) {
+                      console.log('Service Worker registration failed: ', err);
+                    }
+                  );
+                });
+              }
+            `
+          }}
+        />
       </head>
-      <body className="max-w-3xl mx-auto px-4 sm:px-6">
+      <body className={inter.className}>
         <Toaster position="top-center" />
         {children}
       </body>

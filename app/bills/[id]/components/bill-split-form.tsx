@@ -18,7 +18,7 @@ import { Slider } from "@/components/ui/slider"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { ChevronDown, Edit2, UtensilsCrossed, Wine, PartyPopper } from "lucide-react"
+import { ChevronDown, Edit2, UtensilsCrossed, Wine, PartyPopper, ArrowRight } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { supabase } from '@/lib/utils'
 import { analytics } from '@/lib/posthog'
@@ -64,7 +64,7 @@ const formatPrice = (price: number) => {
   }).format(price);
 };
 
-export function BillSplitForm({ bill }: { bill: Bill }) {
+export function BillSplitForm({ bill, onTabChange }: { bill: Bill; onTabChange: (tab: string) => void }) {
   const router = useRouter()
   
   // Initialize items with server state
@@ -90,18 +90,20 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
   ]
 
   const handleItemSelect = (itemId: string, checked: boolean) => {
-    const item = items.find(i => i.id === itemId)
-    if (!item) return
+    const item = items.find(i => i.id === itemId);
+    if (!item) return;
+
+    const remainingQty = getRemainingQuantity(itemId);
 
     setItems(items.map(i => 
       i.id === itemId 
         ? { 
             ...i, 
             selected: checked, 
-            myQuantity: checked ? (i.quantity === 1 ? 1 : 0) : 0 
+            myQuantity: checked ? (i.quantity === 1 || remainingQty === 1 ? 1 : 0) : 0 
           }
         : i
-    ))
+    ));
 
     if (checked) {
       analytics.itemAssigned({
@@ -109,8 +111,8 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
         itemName: item.name,
         itemPrice: item.price,
         assignedTo: currentDiner || 'anonymous',
-        quantity: item.quantity === 1 ? 1 : 0
-      })
+        quantity: item.quantity === 1 || remainingQty === 1 ? 1 : 0
+      });
     }
   }
 
@@ -164,9 +166,38 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
   }
 
   const handleLockIn = async () => {
-    if (!selectedItems.length) return
-    setIsNameDialogOpen(true)
-  }
+    // Check if any selected items are missing quantities
+    const invalidItems = selectedItems.filter(item => 
+      item.selected && (!item.myQuantity || item.myQuantity === 0)
+    );
+
+    if (invalidItems.length > 0) {
+      // For items with quantity 1 or remaining 1, automatically set their quantity
+      const updatedItems = items.map(item => {
+        if (invalidItems.some(i => i.id === item.id)) {
+          const remainingQty = getRemainingQuantity(item.id);
+          if (item.quantity === 1 || remainingQty === 1) {
+            return { ...item, myQuantity: 1 };
+          }
+        }
+        return item;
+      });
+      
+      setItems(updatedItems);
+      
+      // Check if there are still any items without quantities
+      const stillInvalidItems = updatedItems.filter(item => 
+        item.selected && (!item.myQuantity || item.myQuantity === 0)
+      );
+      
+      if (stillInvalidItems.length > 0) {
+        toast.error('Please specify quantities for all selected items');
+        return;
+      }
+    }
+
+    setIsNameDialogOpen(true);
+  };
 
   const resetSelections = () => {
     setItems(items.map(item => ({
@@ -361,6 +392,17 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
 
   const { available, accountedFor } = categorizeItems();
 
+  // Add this function to check if all items are accounted for
+  const areAllItemsAccountedFor = () => {
+    return bill.bill_items.every(item => {
+      const totalAssigned = bill.diners.reduce((sum, diner) => {
+        const dinerItem = diner.items.find(i => i.itemId === item.id);
+        return sum + (dinerItem?.quantity || 0);
+      }, 0);
+      return totalAssigned === item.quantity;
+    });
+  };
+
   return (
     <div className="max-w-md mx-auto">
       <Card>
@@ -392,17 +434,24 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
         </CardHeader>
         <CardContent className="space-y-8">
           {/* Success State */}
-          {outstandingAmount === 0 && accountedFor.length > 0 && Object.values(available).every(items => items.length === 0) && (
-            <div className="flex flex-col items-center justify-center py-8 text-center space-y-4">
-              <div className="rounded-full bg-green-100 p-3">
-                <PartyPopper className="h-6 w-6 text-green-600" />
+          {areAllItemsAccountedFor() && (
+            <div className="rounded-lg border bg-card text-card-foreground p-6 space-y-4">
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-green-100 mx-auto">
+                <PartyPopper className="w-6 h-6 text-green-600" />
               </div>
-              <div className="space-y-2">
-                <h3 className="font-semibold text-lg text-green-600">All Items Accounted For!</h3>
+              <div className="space-y-2 text-center">
+                <h3 className="text-lg font-medium">All items accounted for!</h3>
                 <p className="text-sm text-muted-foreground">
                   Great job! Check the summary tab to review the split.
                 </p>
               </div>
+              <Button 
+                onClick={() => onTabChange('summary')}
+                className="w-full flex items-center justify-center gap-2"
+              >
+                View Summary
+                <ArrowRight className="w-4 h-4" />
+              </Button>
             </div>
           )}
 
@@ -494,7 +543,7 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
 
                         {item.selected && (
                           <div className="pl-6 space-y-2">
-                            {item.quantity > 1 && remainingQuantity > 0 ? (
+                            {item.quantity > 1 && remainingQuantity > 1 && (
                               <div className="space-y-2">
                                 <div className="flex justify-end">
                                   <div className="text-xs text-muted-foreground">
@@ -512,7 +561,7 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
                                   />
                                 </div>
                               </div>
-                            ) : null}
+                            )}
                           </div>
                         )}
                       </div>

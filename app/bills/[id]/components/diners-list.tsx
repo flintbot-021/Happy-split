@@ -16,8 +16,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
-import { ChevronDown } from "lucide-react"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
@@ -94,13 +92,6 @@ export function DinersList({ bill }: { bill: Bill }) {
   const billTotal = bill.total_amount
   const outstandingAmount = billTotal - totalPaid
 
-  // Calculate tip and items totals
-  const tipTotal = bill.diners.reduce((sum, diner) => sum + diner.tip_amount, 0)
-  const itemsTotal = totalPaid - tipTotal
-
-  // Calculate tip percentage
-  const tipPercentage = ((tipTotal / itemsTotal) * 100).toFixed(1)
-
   const handleDelete = async (dinerId: string) => {
     setIsDeleting(true)
     try {
@@ -122,11 +113,37 @@ export function DinersList({ bill }: { bill: Bill }) {
 
   const handleDeleteItem = async (dinerId: string, itemId: string) => {
     try {
-      const response = await fetch(`/api/diners/${dinerId}/items/${itemId}`, {
-        method: 'DELETE',
-      });
+      // First get the current diner to access their items
+      const { data: diner, error: fetchError } = await supabase
+        .from('diners')
+        .select('items, tip_amount')
+        .eq('id', dinerId)
+        .single();
 
-      if (!response.ok) throw new Error('Failed to delete item');
+      if (fetchError) throw fetchError;
+
+      // Filter out the item to be deleted
+      const updatedItems = diner.items.filter((item: DinerItem) => item.itemId !== itemId);
+
+      // Calculate new total for the diner
+      const newItemsTotal = updatedItems.reduce((sum: number, item: DinerItem) => {
+        const billItem = bill.bill_items.find(bi => bi.id === item.itemId);
+        return sum + (billItem ? billItem.price * item.quantity : 0);
+      }, 0);
+
+      // Add tip amount to get final total
+      const newTotal = newItemsTotal + diner.tip_amount;
+
+      // Update the diner with the new items array and total
+      const { error: updateError } = await supabase
+        .from('diners')
+        .update({ 
+          items: updatedItems,
+          total: newTotal
+        })
+        .eq('id', dinerId);
+
+      if (updateError) throw updateError;
       
       router.refresh();
     } catch (error) {
@@ -222,52 +239,43 @@ export function DinersList({ bill }: { bill: Bill }) {
           </ScrollArea>
 
           <div className="mt-6 space-y-4">
-            <Collapsible>
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">Total Paid</span>
-                  <CollapsibleTrigger className="hover:text-muted-foreground transition-colors">
-                    <ChevronDown className="h-4 w-4" />
-                  </CollapsibleTrigger>
-                </div>
-                <span className="text-xl font-bold">
-                  R{totalPaid.toFixed(2)}
-                </span>
-              </div>
-              
-              <CollapsibleContent className="pt-2 space-y-1">
-                <div className="flex justify-between items-center text-sm pl-4">
-                  <span className="text-muted-foreground">Items</span>
-                  <span>R{itemsTotal.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between items-center text-sm pl-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">Tips</span>
-                    <Badge variant="secondary" className="text-xs">
-                      {tipPercentage}%
-                    </Badge>
-                  </div>
-                  <span className="text-green-600">R{tipTotal.toFixed(2)}</span>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
+            <div className="flex justify-between items-center">
+              <span className="font-medium">Total Paid</span>
+              <span className="text-xl font-bold">
+                R{totalPaid.toFixed(2)}
+              </span>
+            </div>
 
             <div className="flex justify-between items-center pt-4 border-t">
-              <div>
-                <div className="font-medium">Total Bill</div>
-              </div>
-              <div className="text-medium">
+              <span className="font-medium">Total Bill</span>
+              <span className="text-medium">
                 R{bill.total_amount.toFixed(2)}
-              </div>
+              </span>
             </div>
 
             <Separator />
 
             <div className="flex justify-between items-center font-medium">
-              <span>Outstanding Amount</span>
-              <span className="text-red-600">
-                R{outstandingAmount.toFixed(2)}
-              </span>
+              {outstandingAmount < 0 ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span>Tip Amount</span>
+                    <Badge variant="secondary" className="text-xs">
+                      {((Math.abs(outstandingAmount) / bill.total_amount) * 100).toFixed(1)}%
+                    </Badge>
+                  </div>
+                  <span className="text-green-600">
+                    R{Math.abs(outstandingAmount).toFixed(2)}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span>Outstanding Amount</span>
+                  <span className="text-red-600">
+                    R{outstandingAmount.toFixed(2)}
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </CardContent>

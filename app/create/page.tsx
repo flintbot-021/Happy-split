@@ -25,9 +25,17 @@ function CreateBillContent() {
     if (billId) {
       const storedItems = sessionStorage.getItem(`bill-${billId}-items`);
       if (storedItems) {
-        setExtractedItems(JSON.parse(storedItems));
-        setStatus('done');
-        return;
+        try {
+          const parsedItems = JSON.parse(storedItems);
+          setExtractedItems(Array.isArray(parsedItems) ? parsedItems : []);
+          setStatus('done');
+          return;
+        } catch (error) {
+          console.error('Error parsing stored items:', error);
+          setExtractedItems([]);
+          setStatus('error');
+          return;
+        }
       }
     }
 
@@ -52,13 +60,33 @@ function CreateBillContent() {
         if (!response.ok) throw new Error('Failed to process image');
 
         const data = await response.json();
-        setExtractedItems(data.items);
+        console.log('📝 Received data:', data);
+
+        // Ensure we always have an array of items
+        const items = Array.isArray(data.items) ? data.items : [];
+        
+        // Log the items we're about to set
+        console.log('📝 Setting items:', items);
+        
+        setExtractedItems(items);
         setStatus('done');
+        
         // Clear the image from sessionStorage after processing
         sessionStorage.removeItem('capturedImage');
+
+        // Show validation status if available
+        if (data.validation) {
+          const { totals_match, confidence } = data.validation;
+          if (!totals_match) {
+            toast.warning('The extracted total might not be accurate. Please review the items carefully.');
+          } else if (confidence === 'low') {
+            toast.info('Some items might need review. Please check the details.');
+          }
+        }
       } catch (error) {
         console.error('Error processing image:', error);
         setStatus('error');
+        toast.error('Failed to process the receipt. Please try again.');
       }
     };
 
@@ -70,7 +98,9 @@ function CreateBillContent() {
     
     setIsSubmitting(true);
     try {
-      const totalAmount = extractedItems.reduce((sum, item) => 
+      // Ensure extractedItems is an array before reducing
+      const items = Array.isArray(extractedItems) ? extractedItems : [];
+      const totalAmount = items.reduce((sum, item) => 
         sum + (item.price * item.quantity), 0
       );
 
@@ -83,7 +113,7 @@ function CreateBillContent() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          items: extractedItems.map(item => ({
+          items: items.map(item => ({
             name: item.name,
             price: item.price,
             quantity: item.quantity,
@@ -102,33 +132,35 @@ function CreateBillContent() {
       const finalBillId = billId || bill.billId;
 
       // Store items in session storage for editing later
-      sessionStorage.setItem(`bill-${finalBillId}-items`, JSON.stringify(extractedItems));
+      sessionStorage.setItem(`bill-${finalBillId}-items`, JSON.stringify(items));
 
       // Track bill action
       if (billId) {
         analytics.billEdited({
           billId: finalBillId,
           totalAmount,
-          itemCount: extractedItems.length
+          itemCount: items.length
         });
       } else {
         analytics.billCreated({
           totalAmount,
-          itemCount: extractedItems.length,
+          itemCount: items.length,
           creatorName: 'anonymous'
         });
       }
 
       router.push(`/bills/${finalBillId}`);
     } catch (error) {
-      console.error('Error handling bill:', error);
-      toast.error(error instanceof Error ? error.message : `Failed to ${billId ? 'update' : 'create'} bill`);
+      console.error('Error submitting bill:', error);
+      toast.error('Failed to save bill. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const totalAmount = extractedItems.reduce((sum, item) => 
+  // Ensure extractedItems is an array before calculating total
+  const items = Array.isArray(extractedItems) ? extractedItems : [];
+  const totalAmount = items.reduce((sum, item) => 
     sum + (item.price * item.quantity), 0
   );
 
@@ -150,7 +182,7 @@ function CreateBillContent() {
     <main className="min-h-screen p-4">
       <div className="max-w-md mx-auto space-y-4">
         <PreviewStep 
-          items={extractedItems} 
+          items={items} 
           onUpdateItems={setExtractedItems} 
         />
         
@@ -161,7 +193,7 @@ function CreateBillContent() {
           </div>
           <Button 
             onClick={handleSubmit} 
-            disabled={isSubmitting || extractedItems.length === 0}
+            disabled={isSubmitting || items.length === 0}
           >
             {isSubmitting ? (
               <>

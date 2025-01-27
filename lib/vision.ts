@@ -1,9 +1,11 @@
 import vision from '@google-cloud/vision';
 
 // Create a client
-const client = new vision.ImageAnnotatorClient({
-  keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS
-});
+const client = new vision.ImageAnnotatorClient(
+  process.env.GOOGLE_CREDENTIALS 
+    ? { credentials: JSON.parse(process.env.GOOGLE_CREDENTIALS) }
+    : { keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS }
+);
 
 export async function detectText(imageBuffer: Buffer): Promise<string> {
   try {

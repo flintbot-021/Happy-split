@@ -7,6 +7,13 @@
   "background_color": "#ffffff",
   "theme_color": "#0F172A",
   "orientation": "portrait",
+  "scope": "/",
+  "prefer_related_applications": false,
+  "categories": ["utilities", "finance"],
+  "display_override": ["standalone", "minimal-ui"],
+  "launch_handler": {
+    "client_mode": ["focus-existing", "auto"]
+  },
   "icons": [
     {
       "src": "/icons/icon-192x192.png",
@@ -19,6 +26,14 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "wide"
     }
   ]
 } 

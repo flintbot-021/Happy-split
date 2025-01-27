@@ -20,8 +20,15 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
-    title: "Happy Split"
+    statusBarStyle: "default",
+    title: "Happy Split",
+    startupImage: [
+      '/icons/icon-512x512.png'
+    ]
+  },
+  applicationName: "Happy Split",
+  formatDetection: {
+    telephone: false
   }
 }
 
@@ -45,7 +52,10 @@ export default function RootLayout({
         }} />
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-touch-fullscreen" content="yes" />
+        <meta name="apple-mobile-web-app-title" content="Happy Split" />
+        <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1, maximum-scale=1" />
         <Script
           id="sw-registration"
           strategy="afterInteractive"

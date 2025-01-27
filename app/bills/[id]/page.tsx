@@ -1,32 +1,42 @@
+'use client'
+
+import { useState, useEffect } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BillSplitForm } from "./components/bill-split-form"
 import { DinersList } from "./components/diners-list"
-import { supabase } from '@/app/utils/supabase'
+import { supabase } from '@/lib/utils'
 import { analytics } from '@/lib/posthog'
 import { notFound } from 'next/navigation'
 
-async function getBillWithDiners(billId: string) {
-  const { data: bill } = await supabase
-    .from('bills')
-    .select(`
-      *,
-      bill_items (*),
-      diners (*)
-    `)
-    .eq('id', billId)
-    .single()
-
-  return bill
-}
-
 interface PageProps {
-  params: Promise<{ id: string }>
+  params: { id: string }
 }
 
-export default async function BillPage({ params }: PageProps) {
-  const { id } = await params
-  const bill = await getBillWithDiners(id)
-  if (!bill) notFound()
+export default function BillPage({ params }: PageProps) {
+  const [activeTab, setActiveTab] = useState('split')
+  const [bill, setBill] = useState<any>(null)
+  const { id } = params
+
+  useEffect(() => {
+    async function loadBill() {
+      const { data: bill } = await supabase
+        .from('bills')
+        .select(`
+          *,
+          bill_items (*),
+          diners (*)
+        `)
+        .eq('id', id)
+        .single()
+
+      if (!bill) return notFound()
+      setBill(bill)
+    }
+
+    loadBill()
+  }, [id])
+
+  if (!bill) return null
 
   // Calculate total paid and outstanding amount
   const totalPaid = bill.diners.reduce((sum: number, diner: { total: number }) => sum + diner.total, 0)
@@ -43,13 +53,13 @@ export default async function BillPage({ params }: PageProps) {
   return (
     <div className="relative min-h-screen pb-16">
       <div className="py-4">
-        <Tabs defaultValue="split" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="split">Split Bill</TabsTrigger>
             <TabsTrigger value="summary">Summary</TabsTrigger>
           </TabsList>
           <TabsContent value="split">
-            <BillSplitForm bill={bill} />
+            <BillSplitForm bill={bill} onTabChange={setActiveTab} />
           </TabsContent>
           <TabsContent value="summary">
             <DinersList bill={bill} />

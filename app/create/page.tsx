@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { BillSkeleton } from '@/components/bill-skeleton';
 import { Button } from "@/components/ui/button";
 import { analytics } from '@/lib/posthog';
 import { PreviewStep } from './components/PreviewStep';
@@ -10,6 +9,7 @@ import { ErrorState } from './components/ErrorState';
 import { ProcessingStatus, ExtractedItem } from './types';
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { BillProcessing } from '@/app/components/bill-processing';
 
 function CreateBillContent() {
   const router = useRouter();
@@ -133,13 +133,7 @@ function CreateBillContent() {
   );
 
   if (status === 'processing') {
-    return (
-      <main className="min-h-screen p-4">
-        <div className="max-w-md mx-auto space-y-4">
-          <BillSkeleton />
-        </div>
-      </main>
-    );
+    return <BillProcessing mode="create" />;
   }
 
   if (status === 'error') {

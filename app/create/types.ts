@@ -1,5 +1,7 @@
 export type ProcessingStatus = 'idle' | 'processing' | 'done' | 'error';
-export type Category = 'Food' | 'Drinks' | 'Desserts';
+export type Category = 'Drinks' | 'Food' | 'Desserts';
+
+export const CATEGORY_ORDER: Category[] = ['Drinks', 'Food', 'Desserts'];
 
 export interface ExtractedItem {
   name: string;

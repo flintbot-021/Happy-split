@@ -18,13 +18,12 @@ import { Slider } from "@/components/ui/slider"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { ChevronDown, Edit2, UtensilsCrossed, Wine, PartyPopper, Check, ArrowRight } from "lucide-react"
+import { ChevronDown, Edit2, UtensilsCrossed, Wine, PartyPopper, ArrowRight } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { supabase } from '@/lib/utils'
 import { analytics } from '@/lib/posthog'
 import { toast } from "sonner"
 import { CATEGORY_ORDER } from "@/app/create/types"
-import Link from "next/link"
 
 interface BillItem {
   id: string

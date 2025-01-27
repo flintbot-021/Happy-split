@@ -16,8 +16,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
-import { ChevronDown } from "lucide-react"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
@@ -93,13 +91,6 @@ export function DinersList({ bill }: { bill: Bill }) {
   const totalPaid = bill.diners.reduce((sum, diner) => sum + diner.total, 0)
   const billTotal = bill.total_amount
   const outstandingAmount = billTotal - totalPaid
-
-  // Calculate tip and items totals
-  const tipTotal = bill.diners.reduce((sum, diner) => sum + diner.tip_amount, 0)
-  const itemsTotal = totalPaid - tipTotal
-
-  // Calculate tip percentage
-  const tipPercentage = ((tipTotal / itemsTotal) * 100).toFixed(1)
 
   const handleDelete = async (dinerId: string) => {
     setIsDeleting(true)

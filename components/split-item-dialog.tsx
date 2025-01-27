@@ -29,7 +29,7 @@ export function SplitItemDialog({
         <DialogHeader>
           <DialogTitle>Split Item</DialogTitle>
           <DialogDescription>
-            Split "{item.name}" into equal portions
+            Split &quot;{item.name}&quot; into equal portions
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-6 py-4">

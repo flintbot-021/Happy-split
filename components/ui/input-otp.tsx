@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { OTPInput, OTPInputContext, OTPInputProps } from "input-otp"
+import { OTPInput, OTPInputProps } from "input-otp"
 import { cn } from "@/lib/utils"
 
 const InputOTP = React.forwardRef<

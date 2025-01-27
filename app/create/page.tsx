@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { BillSkeleton } from '@/components/bill-skeleton';
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { ProcessingStatus, ExtractedItem } from './types';
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
-export default function CreateBill() {
+function CreateBillContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const billId = searchParams.get('billId');
@@ -181,5 +181,13 @@ export default function CreateBill() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function CreateBill() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CreateBillContent />
+    </Suspense>
   );
 } 

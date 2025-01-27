@@ -144,16 +144,6 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
   const tipAmount = (subtotal * tipPercentage) / 100
   const total = subtotal + tipAmount
 
-  // Group items by category
-  const groupedItems = items.reduce((groups, item) => {
-    const category = item.category
-    if (!groups[category]) {
-      groups[category] = []
-    }
-    groups[category].push(item)
-    return groups
-  }, {} as Record<string, BillItem[]>)
-
   const selectedItems = items.filter(i => i.selected)
 
   const handleTipSelect = (value: number) => {

@@ -1,18 +1,6 @@
 import { NextResponse } from 'next/server';
-import OpenAI from 'openai';
-
-const client = new OpenAI();
-
-const SYSTEM_PROMPT = `
-You are a receipt processing assistant. Extract items from the receipt image.
-For each item, provide:
-- name (as shown on receipt)
-- price (numeric value only)
-- quantity (default to 1 if not specified)
-- category (one of: "Drinks", "Food", "Desserts")
-
-Return the data in JSON array format.
-`;
+import { detectText } from '@/lib/vision';
+import { processReceiptText } from '@/lib/openai';
 
 export async function POST(request: Request) {
   try {
@@ -25,60 +13,40 @@ export async function POST(request: Request) {
       );
     }
 
+    // Convert base64 to buffer
     const base64Image = body.image.split(',')[1];
+    const imageBuffer = Buffer.from(base64Image, 'base64');
 
-    const response = await client.chat.completions.create({
-      model: "gpt-4o-mini",
-      max_tokens: 1000,  // Limit response length since we only need structured data
-      messages: [
-        {
-          role: "system",
-          content: SYSTEM_PROMPT,
-        },
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: "Extract the items from this receipt.",
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:image/jpeg;base64,${base64Image}`
-              },
-            },
-          ],
-        }
-      ]
-    });
-
-    const result = response.choices[0]?.message?.content;
-      
-    if (!result) {
+    // Step 1: Extract text using Google Cloud Vision
+    console.log('🔍 Detecting text with Google Cloud Vision...');
+    const extractedText = await detectText(imageBuffer);
+    
+    if (!extractedText) {
       return NextResponse.json(
-        { error: 'No response from OpenAI' },
-        { status: 500 }
+        { error: 'No text detected in image' },
+        { status: 400 }
       );
     }
 
-    try {
-      const cleanedResult = result
-        .replace(/```json\n?/, '')
-        .replace(/\n?```$/, '')
-        .trim();
+    // Step 2: Process text with OpenAI
+    console.log('🤖 Processing text with OpenAI...');
+    const result = await processReceiptText(extractedText);
+    
+    // Log the full result for debugging
+    console.log('🤖 Full OpenAI Result:', result);
 
-      if (cleanedResult.startsWith('[') || cleanedResult.startsWith('{')) {
-        const items = JSON.parse(cleanedResult);
-        return NextResponse.json({ items });
-      } else {
-        return NextResponse.json({ items: [] });
-      }
-    } catch (parseError) {
-      console.error('❌ API: Parse error:', parseError);
-      console.error('❌ API: Raw response:', result);
-      throw new Error('Failed to parse items from receipt');
-    }
+    // Extract items array and ensure it's valid
+    const items = Array.isArray(result.items) ? result.items : [];
+    
+    // Log the extracted items
+    console.log('📝 Extracted Items:', items);
+
+    return NextResponse.json({ 
+      items,
+      extracted_total: result.extracted_total,
+      calculated_total: result.calculated_total,
+      validation: result.validation
+    });
   } catch (error) {
     console.error('❌ API: General error:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';

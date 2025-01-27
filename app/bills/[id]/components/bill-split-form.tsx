@@ -18,11 +18,12 @@ import { Slider } from "@/components/ui/slider"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { ChevronDown, Users } from "lucide-react"
+import { ChevronDown, Edit2, UtensilsCrossed, Wine, PartyPopper } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { supabase } from '@/lib/utils'
 import { analytics } from '@/lib/posthog'
 import { toast } from "sonner"
+import { CATEGORY_ORDER } from "@/app/create/types"
 
 interface BillItem {
   id: string
@@ -142,16 +143,6 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
 
   const tipAmount = (subtotal * tipPercentage) / 100
   const total = subtotal + tipAmount
-
-  // Group items by category
-  const groupedItems = items.reduce((groups, item) => {
-    const category = item.category
-    if (!groups[category]) {
-      groups[category] = []
-    }
-    groups[category].push(item)
-    return groups
-  }, {} as Record<string, BillItem[]>)
 
   const selectedItems = items.filter(i => i.selected)
 
@@ -343,18 +334,48 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
       : item.price
   }
 
+  const handleEditBill = () => {
+    router.push(`/create?billId=${bill.id}`);
+  };
+
+  // Separate items into available and accounted for
+  const categorizeItems = () => {
+    const available: Record<string, BillItem[]> = {};
+    const accountedFor: BillItem[] = [];
+
+    items.forEach(item => {
+      const remainingQuantity = getRemainingQuantity(item.id);
+      if (remainingQuantity === 0) {
+        accountedFor.push(item);
+      } else {
+        const category = item.category;
+        if (!available[category]) {
+          available[category] = [];
+        }
+        available[category].push(item);
+      }
+    });
+
+    return { available, accountedFor };
+  };
+
+  const { available, accountedFor } = categorizeItems();
+
   return (
     <div className="max-w-md mx-auto">
       <Card>
         <CardHeader className="space-y-4">
           <div className="flex flex-row items-start justify-between">
             <CardTitle>Select Your Items</CardTitle>
-            {bill.diners.length > 0 && (
-              <Badge variant="secondary" className="flex items-center gap-1">
-                <Users className="h-3 w-3" />
-                {bill.diners.length}
-              </Badge>
-            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground"
+              onClick={handleEditBill}
+            >
+              <Edit2 className="h-4 w-4 mr-1" />
+              Edit Bill
+            </Button>
           </div>
           
           {outstandingAmount > 0 && (
@@ -370,73 +391,183 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
           )}
         </CardHeader>
         <CardContent className="space-y-8">
-          {Object.entries(groupedItems).map(([category, categoryItems]) => (
-            <div key={category} className="space-y-4">
-              <h2 className="font-semibold text-lg">{category}</h2>
-              <div className="space-y-1">
-                {categoryItems.map((item, index) => {
-                  const remainingQuantity = getRemainingQuantity(item.id)
-                  const selectedBy = getSelectedBy(item.id)
-                  const isFullyTaken = remainingQuantity === 0
+          {/* Success State */}
+          {outstandingAmount === 0 && accountedFor.length > 0 && Object.values(available).every(items => items.length === 0) && (
+            <div className="flex flex-col items-center justify-center py-8 text-center space-y-4">
+              <div className="rounded-full bg-green-100 p-3">
+                <PartyPopper className="h-6 w-6 text-green-600" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="font-semibold text-lg text-green-600">All Items Accounted For!</h3>
+                <p className="text-sm text-muted-foreground">
+                  Great job! Check the summary tab to review the split.
+                </p>
+              </div>
+            </div>
+          )}
 
-                  return (
-                    <div key={item.id} className={cn(
-                      "space-y-2 p-2 rounded-lg",
-                      index % 2 === 0 ? "bg-transparent" : "bg-muted/50",
-                      isFullyTaken && "opacity-50"
-                    )}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2 min-w-0 flex-1">
-                          <Checkbox
-                            id={item.id}
-                            checked={item.selected}
-                            onCheckedChange={(checked) => 
-                              handleItemSelect(item.id, checked as boolean)
-                            }
-                            // Only disable if ALL quantities have been taken
-                            disabled={remainingQuantity === 0}
-                            className="flex-shrink-0"
-                          />
-                          <Label 
-                            htmlFor={item.id} 
-                            className="font-medium flex items-center gap-2 flex-1 min-w-0"
-                          >
-                            <span className="text-sm text-muted-foreground flex-shrink-0">
-                              {item.quantity > 1 
-                                ? (item.selected 
-                                    ? `${item.myQuantity}/${remainingQuantity}` 
-                                    : remainingQuantity)
-                                : "1"} ·
-                            </span>
-                            <span className="flex items-center gap-2 min-w-0 flex-1">
-                              <span className="truncate">{item.name}</span>
-                              {selectedBy.length > 0 && (
-                                <div className="flex flex-wrap gap-1 flex-shrink-0">
-                                  {selectedBy.length > 1 ? (
-                                    <>
+          {/* Available Items */}
+          {CATEGORY_ORDER.map(category => {
+            const categoryItems = available[category];
+            if (!categoryItems?.length) return null;
+
+            return (
+              <div key={category} className="space-y-4">
+                <div className="flex items-center gap-2">
+                  {category === 'Drinks' ? (
+                    <Wine className="h-5 w-5 text-muted-foreground" />
+                  ) : (
+                    <UtensilsCrossed className="h-5 w-5 text-muted-foreground" />
+                  )}
+                  <h2 className="font-semibold text-lg">{category}</h2>
+                </div>
+                <div className="space-y-1">
+                  {categoryItems.map((item, index) => {
+                    const remainingQuantity = getRemainingQuantity(item.id);
+                    const selectedBy = getSelectedBy(item.id);
+
+                    return (
+                      <div key={item.id} className={cn(
+                        "space-y-2 p-2 rounded-lg",
+                        index % 2 === 0 ? "bg-transparent" : "bg-muted/50"
+                      )}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2 min-w-0 flex-1">
+                            <Checkbox
+                              id={item.id}
+                              checked={item.selected}
+                              onCheckedChange={(checked) => 
+                                handleItemSelect(item.id, checked as boolean)
+                              }
+                              disabled={remainingQuantity === 0}
+                              className="flex-shrink-0"
+                            />
+                            <Label 
+                              htmlFor={item.id} 
+                              className="font-medium flex items-center gap-2 flex-1 min-w-0"
+                            >
+                              <span className="text-sm text-muted-foreground flex-shrink-0">
+                                {item.quantity > 1 
+                                  ? (item.selected 
+                                      ? `${item.myQuantity}/${remainingQuantity}` 
+                                      : remainingQuantity)
+                                  : "1"} ·
+                              </span>
+                              <span className="flex items-center gap-2 min-w-0 flex-1">
+                                <span className="truncate">{item.name}</span>
+                                {selectedBy.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 flex-shrink-0">
+                                    {selectedBy.length > 1 ? (
+                                      <>
+                                        <Badge 
+                                          variant="secondary" 
+                                          className="text-xs text-muted-foreground"
+                                        >
+                                          {selectedBy[0]}•{bill.diners.find(d => d.name === selectedBy[0])?.items.find(i => i.itemId === item.id)?.quantity || 0}
+                                        </Badge>
+                                        <Badge 
+                                          variant="secondary" 
+                                          className="text-xs text-muted-foreground"
+                                        >
+                                          +{selectedBy.length - 1}
+                                        </Badge>
+                                      </>
+                                    ) : (
                                       <Badge 
                                         variant="secondary" 
                                         className="text-xs text-muted-foreground"
                                       >
                                         {selectedBy[0]}•{bill.diners.find(d => d.name === selectedBy[0])?.items.find(i => i.itemId === item.id)?.quantity || 0}
                                       </Badge>
-                                      <Badge 
-                                        variant="secondary" 
-                                        className="text-xs text-muted-foreground"
-                                      >
-                                        +{selectedBy.length - 1}
-                                      </Badge>
-                                    </>
-                                  ) : (
-                                    <Badge 
-                                      variant="secondary" 
-                                      className="text-xs text-muted-foreground"
-                                    >
-                                      {selectedBy[0]}•{bill.diners.find(d => d.name === selectedBy[0])?.items.find(i => i.itemId === item.id)?.quantity || 0}
-                                    </Badge>
-                                  )}
+                                    )}
+                                  </div>
+                                )}
+                              </span>
+                            </Label>
+                          </div>
+                          <div className="text-right flex-shrink-0 ml-2">
+                            <div className="font-medium tabular-nums">
+                              R{formatPrice(getItemTotal(item))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {item.selected && (
+                          <div className="pl-6 space-y-2">
+                            {item.quantity > 1 && remainingQuantity > 0 ? (
+                              <div className="space-y-2">
+                                <div className="flex justify-end">
+                                  <div className="text-xs text-muted-foreground">
+                                    R{formatPrice(item.price)} per item
+                                  </div>
                                 </div>
-                              )}
+                                <div className="flex items-center gap-2">
+                                  <Slider
+                                    value={[item.myQuantity || 0]}
+                                    min={0}
+                                    max={remainingQuantity}
+                                    step={1}
+                                    onValueChange={(value) => handleQuantityChange(item.id, value)}
+                                    className="flex-1"
+                                  />
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Accounted For Items */}
+          {accountedFor.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <h2 className="font-semibold text-lg">Accounted For</h2>
+                <Badge variant="secondary" className="text-xs">
+                  {accountedFor.length}
+                </Badge>
+              </div>
+              <div className="space-y-1">
+                {accountedFor.map((item, index) => {
+                  const selectedBy = getSelectedBy(item.id);
+                  return (
+                    <div key={item.id} className={cn(
+                      "space-y-2 p-2 rounded-lg opacity-50",
+                      index % 2 === 0 ? "bg-transparent" : "bg-muted/50"
+                    )}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2 min-w-0 flex-1">
+                          <Checkbox
+                            id={`accounted-${item.id}`}
+                            checked={true}
+                            disabled={true}
+                            className="flex-shrink-0"
+                          />
+                          <Label 
+                            htmlFor={`accounted-${item.id}`}
+                            className="font-medium flex items-center gap-2 flex-1 min-w-0"
+                          >
+                            <span className="text-sm text-muted-foreground flex-shrink-0">
+                              {item.quantity} ·
+                            </span>
+                            <span className="flex items-center gap-2 min-w-0 flex-1 line-through">
+                              <span className="truncate">{item.name}</span>
+                              <div className="flex flex-wrap gap-1 flex-shrink-0">
+                                {selectedBy.map(name => (
+                                  <Badge 
+                                    key={name}
+                                    variant="secondary" 
+                                    className="text-xs text-muted-foreground"
+                                  >
+                                    {name}•{bill.diners.find(d => d.name === name)?.items.find(i => i.itemId === item.id)?.quantity || 0}
+                                  </Badge>
+                                ))}
+                              </div>
                             </span>
                           </Label>
                         </div>
@@ -446,36 +577,12 @@ export function BillSplitForm({ bill }: { bill: Bill }) {
                           </div>
                         </div>
                       </div>
-
-                      {item.selected && (
-                        <div className="pl-6 space-y-2">
-                          {item.quantity > 1 && remainingQuantity > 0 ? (
-                            <div className="space-y-2">
-                              <div className="flex justify-end">
-                                <div className="text-xs text-muted-foreground">
-                                  R{formatPrice(item.price)} per item
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Slider
-                                  value={[item.myQuantity || 0]}
-                                  min={0}
-                                  max={remainingQuantity}
-                                  step={1}
-                                  onValueChange={(value) => handleQuantityChange(item.id, value)}
-                                  className="flex-1"
-                                />
-                              </div>
-                            </div>
-                          ) : null}
-                        </div>
-                      )}
                     </div>
-                  )
+                  );
                 })}
               </div>
             </div>
-          ))}
+          )}
 
           <Separator className="my-4" />
           

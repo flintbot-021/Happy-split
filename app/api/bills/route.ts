@@ -8,9 +8,9 @@ interface BillItem {
   category: 'Food' | 'Drinks' | 'Desserts';
 }
 
-// Generate a 6-digit OTP
+// Generate a 4-digit code
 function generateOTP() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return Math.floor(1000 + Math.random() * 9000).toString();
 }
 
 export async function POST(request: Request) {

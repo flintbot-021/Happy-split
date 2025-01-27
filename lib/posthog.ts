@@ -73,6 +73,12 @@ export interface SelectionDeletedEvent {
   totalAmount: number
 }
 
+interface BillEditedEvent {
+  billId: string;
+  totalAmount: number;
+  itemCount: number;
+}
+
 // Analytics Functions
 export const analytics = {
   billCreated: (data: BillCreatedEvent) => {
@@ -109,5 +115,9 @@ export const analytics = {
 
   selectionDeleted: (data: SelectionDeletedEvent) => {
     posthog.capture('selection.deleted', data)
+  },
+
+  billEdited: (data: BillEditedEvent) => {
+    posthog.capture('bill.edited', data)
   }
 } 

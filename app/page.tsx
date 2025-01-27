@@ -3,7 +3,11 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
 
 export default function Home() {
   const router = useRouter();
@@ -65,7 +69,6 @@ export default function Home() {
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            capture="environment"
             onChange={handleFileUpload}
             className="hidden"
           />
@@ -94,19 +97,14 @@ export default function Home() {
               value={otp}
               onChange={setOtp}
               onComplete={handleComplete}
-              containerClassName="justify-between"
-              render={({ slots }) => (
-                <InputOTPGroup className="w-full grid grid-cols-4 gap-3">
-                  {slots.map((slot, index) => (
-                    <InputOTPSlot 
-                      key={index} 
-                      {...slot} 
-                      className="w-full h-[72px] text-2xl border border-gray-200 focus:border-gray-400 focus:ring-gray-400 rounded-none"
-                    />
-                  ))}
-                </InputOTPGroup>
-              )}
-            />
+            >
+              <InputOTPGroup className="w-full grid grid-cols-4 gap-0">
+                <InputOTPSlot index={0} className="w-full h-[60px] text-2xl" />
+                <InputOTPSlot index={1} className="w-full h-[60px] text-2xl" />
+                <InputOTPSlot index={2} className="w-full h-[60px] text-2xl" />
+                <InputOTPSlot index={3} className="w-full h-[60px] text-2xl" />
+              </InputOTPGroup>
+            </InputOTP>
             <p className="text-xs text-center text-muted-foreground">
               Enter a code to join a bill
             </p>

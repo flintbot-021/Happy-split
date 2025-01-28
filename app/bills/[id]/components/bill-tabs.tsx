@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent } from "@/components/ui/tabs"
 import { BillSplitForm } from "./bill-split-form"
 import { DinersList } from "./diners-list"
 
@@ -41,17 +41,15 @@ export function BillTabs({ bill }: BillTabsProps) {
   const [activeTab, setActiveTab] = useState('split')
 
   return (
-    <Tabs value={activeTab} onValueChange={setActiveTab}>
-      <TabsList className="grid w-full grid-cols-2">
-        <TabsTrigger value="split">Split Bill</TabsTrigger>
-        <TabsTrigger value="summary">Summary</TabsTrigger>
-      </TabsList>
-      <TabsContent value="split">
-        <BillSplitForm bill={bill} onTabChange={setActiveTab} />
-      </TabsContent>
-      <TabsContent value="summary">
-        <DinersList bill={bill} />
-      </TabsContent>
-    </Tabs>
+    <div className="h-screen flex flex-col">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
+        <TabsContent value="split" className="flex-1 data-[state=active]:flex data-[state=active]:flex-col">
+          <BillSplitForm bill={bill} onTabChange={setActiveTab} />
+        </TabsContent>
+        <TabsContent value="summary" className="flex-1 data-[state=active]:flex data-[state=active]:flex-col">
+          <DinersList bill={bill} />
+        </TabsContent>
+      </Tabs>
+    </div>
   )
 } 

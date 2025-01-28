@@ -18,12 +18,13 @@ import { Slider } from "@/components/ui/slider"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { ChevronDown, Edit2, UtensilsCrossed, Wine, PartyPopper, ArrowRight } from "lucide-react"
+import { ChevronDown, Edit2, UtensilsCrossed, Wine, PartyPopper, ArrowRight, Share2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { supabase } from '@/lib/utils'
 import { analytics } from '@/lib/posthog'
 import { toast } from "sonner"
 import { CATEGORY_ORDER } from "@/app/create/types"
+import { TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface BillItem {
   id: string
@@ -104,16 +105,6 @@ export function BillSplitForm({ bill, onTabChange }: { bill: Bill; onTabChange: 
           }
         : i
     ));
-
-    if (checked) {
-      analytics.itemAssigned({
-        billId: bill.id,
-        itemName: item.name,
-        itemPrice: item.price,
-        assignedTo: currentDiner || 'anonymous',
-        quantity: item.quantity === 1 || remainingQty === 1 ? 1 : 0
-      });
-    }
   }
 
   const handleQuantityChange = (itemId: string, value: number[]) => {
@@ -128,14 +119,6 @@ export function BillSplitForm({ bill, onTabChange }: { bill: Bill; onTabChange: 
         ? { ...i, myQuantity: newQuantity }
         : i
     ))
-
-    analytics.quantityAdjusted({
-      billId: bill.id,
-      itemName: item.name,
-      previousQuantity,
-      newQuantity,
-      adjustedBy: currentDiner || 'anonymous'
-    })
   }
 
   const subtotal = items.reduce((sum, item) => 
@@ -152,13 +135,6 @@ export function BillSplitForm({ bill, onTabChange }: { bill: Bill; onTabChange: 
     const previousPercentage = tipPercentage
     setTipPercentage(value)
     setIsCustomTip(false)
-    
-    analytics.tipAdjusted({
-      billId: bill.id,
-      previousPercentage,
-      newPercentage: value,
-      adjustedBy: currentDiner || 'anonymous'
-    })
   }
 
   const handleCustomTip = () => {
@@ -221,15 +197,6 @@ export function BillSplitForm({ bill, onTabChange }: { bill: Bill; onTabChange: 
         ? `/api/diners/${existingDiner.id}/items`
         : '/api/diners';
 
-      // Track selection locking
-      analytics.selectionLocked({
-        billId: bill.id,
-        participantName: existingDiner ? existingDiner.name : dinerName,
-        itemCount: selectedItems.length,
-        totalAmount: total,
-        tipAmount
-      });
-
       const selectedItemsData = selectedItems
         .filter(item => item.selected && (item.myQuantity || 0) > 0)
         .map(item => ({
@@ -271,14 +238,6 @@ export function BillSplitForm({ bill, onTabChange }: { bill: Bill; onTabChange: 
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Failed to save selections');
-      }
-
-      // Track bill joining for new diners
-      if (!existingDiner) {
-        analytics.billJoined({
-          billId: bill.id,
-          participantName: dinerName
-        });
       }
 
       setIsNameDialogOpen(false);
@@ -403,14 +362,39 @@ export function BillSplitForm({ bill, onTabChange }: { bill: Bill; onTabChange: 
     });
   };
 
+  const handleShare = async () => {
+    try {
+      const shareData = {
+        title: 'Happy Split Bill',
+        text: 'Join me in splitting this bill!',
+        url: `${window.location.origin}/bills/${bill.id}`
+      };
+
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback for browsers that don't support native sharing
+        await navigator.clipboard.writeText(shareData.url);
+        toast.success('Bill link copied to clipboard!');
+      }
+    } catch (error) {
+      console.error('Error sharing:', error);
+      // Only show error if it's not a user cancellation
+      if (error instanceof Error && error.name !== 'AbortError') {
+        toast.error('Failed to share bill');
+      }
+    }
+  };
+
   return (
-    <div className="max-w-md mx-auto">
-      <Card>
-        <CardHeader className="space-y-4">
-          <div className="flex flex-row items-start justify-between">
+    <div className="flex flex-col h-screen">
+      {/* Fixed Top Section */}
+      <div className="fixed top-0 left-0 right-0 bg-background z-10 border-b pt-safe">
+        <div className="max-w-md mx-auto px-4">
+          <div className="flex flex-row items-center justify-between py-4">
             <CardTitle>Select Your Items</CardTitle>
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               className="text-muted-foreground hover:text-foreground"
               onClick={handleEditBill}
@@ -419,20 +403,16 @@ export function BillSplitForm({ bill, onTabChange }: { bill: Bill; onTabChange: 
               Edit Bill
             </Button>
           </div>
-          
-          {outstandingAmount > 0 && (
-            <>
-              <Separator />
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-muted-foreground">Outstanding Amount</span>
-                <span className="text-red-600 font-medium">
-                  R{formatPrice(outstandingAmount)}
-                </span>
-              </div>
-            </>
-          )}
-        </CardHeader>
-        <CardContent className="space-y-8">
+          <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsTrigger value="split">Split Bill</TabsTrigger>
+            <TabsTrigger value="summary">Summary</TabsTrigger>
+          </TabsList>
+        </div>
+      </div>
+
+      {/* Scrollable Content */}
+      <div className="flex-1 overflow-y-auto pt-[140px] pb-52 px-4">
+        <div className="max-w-md mx-auto">
           {/* Success State */}
           {areAllItemsAccountedFor() && (
             <div className="rounded-lg border bg-card text-card-foreground p-6 space-y-4">
@@ -450,7 +430,7 @@ export function BillSplitForm({ bill, onTabChange }: { bill: Bill; onTabChange: 
                 className="w-full flex items-center justify-center gap-2"
               >
                 View Summary
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-4 w-4" />
               </Button>
             </div>
           )}
@@ -461,7 +441,7 @@ export function BillSplitForm({ bill, onTabChange }: { bill: Bill; onTabChange: 
             if (!categoryItems?.length) return null;
 
             return (
-              <div key={category} className="space-y-4">
+              <div key={category} className="space-y-4 mb-8">
                 <div className="flex items-center gap-2">
                   {category === 'Drinks' ? (
                     <Wine className="h-5 w-5 text-muted-foreground" />
@@ -574,7 +554,7 @@ export function BillSplitForm({ bill, onTabChange }: { bill: Bill; onTabChange: 
 
           {/* Accounted For Items */}
           {accountedFor.length > 0 && (
-            <div className="space-y-4">
+            <div className="space-y-4 mb-8">
               <div className="flex items-center gap-2">
                 <h2 className="font-semibold text-lg">Accounted For</h2>
                 <Badge variant="secondary" className="text-xs">
@@ -633,8 +613,6 @@ export function BillSplitForm({ bill, onTabChange }: { bill: Bill; onTabChange: 
             </div>
           )}
 
-          <Separator className="my-4" />
-          
           {/* Tip Section */}
           {subtotal > 0 && (
             <div className="space-y-4">
@@ -698,69 +676,51 @@ export function BillSplitForm({ bill, onTabChange }: { bill: Bill; onTabChange: 
               )}
             </div>
           )}
+        </div>
+      </div>
 
-          {/* Total Section */}
-          <div className="space-y-2">
-            <Collapsible>
-              <div className="flex justify-between items-center text-sm text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <span>My selection</span>
-                  <span>•</span>
-                  <span>{selectedItems.length}</span>
-                  <CollapsibleTrigger className="hover:text-foreground transition-colors">
-                    <ChevronDown className="h-4 w-4" />
-                  </CollapsibleTrigger>
-                </div>
-                <span className="tabular-nums">R{formatPrice(subtotal)}</span>
+      {/* Fixed Bottom Section */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t">
+        <div className="max-w-md mx-auto px-4 py-4 space-y-4">
+          {/* Total and Lock In */}
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Total</span>
+                <span className="text-sm text-muted-foreground">•</span>
+                <span className="text-sm text-muted-foreground">{selectedItems.length} items</span>
               </div>
-              <CollapsibleContent className="pt-2">
-                <div className="space-y-1 text-sm text-muted-foreground">
-                  {selectedItems.map(item => (
-                    <div key={item.id} className="flex justify-between items-center">
-                      <span className="flex items-center gap-2">
-                        {item.name}
-                        {item.quantity > 1 && (
-                          <span className="text-xs">
-                            ({item.myQuantity || 0}/{item.quantity})
-                          </span>
-                        )}
-                      </span>
-                      <span>
-                        R{getItemTotal(item).toFixed(2)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-
-            {tipAmount > 0 && (
-              <div className="flex justify-between items-center text-sm text-green-600">
-                <span>Tip</span>
-                <span className="tabular-nums">R{formatPrice(tipAmount)}</span>
-              </div>
-            )}
-            <div className="flex justify-between items-center pt-2">
-              <div className="font-medium">Total</div>
               <div className="text-lg font-bold">
-                R{total.toFixed(2)}
+                R{formatPrice(total)}
               </div>
             </div>
-          </div>
-
-          {/* Lock In and Add Another Diner buttons */}
-          <div className="space-y-2">
+            
             {selectedItems.length > 0 && (
-              <Button
-                onClick={handleLockIn}
-                className="w-full bg-green-600 hover:bg-green-700 text-white"
-              >
-                Lock in selections
-              </Button>
+              <>
+                <Button
+                  onClick={handleLockIn}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Lock in selections
+                </Button>
+
+                {/* Share Bill Button */}
+                <Button
+                  onClick={handleShare}
+                  variant="outline"
+                  className="w-full flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-2">
+                    <Share2 className="h-4 w-4" />
+                    <span>Share Bill</span>
+                  </div>
+                  <span className="font-mono text-sm text-muted-foreground">{bill.id}</span>
+                </Button>
+              </>
             )}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Name Dialog */}
       <Dialog open={isNameDialogOpen} onOpenChange={setIsNameDialogOpen}>

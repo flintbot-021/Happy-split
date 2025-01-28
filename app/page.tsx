@@ -38,7 +38,7 @@ export default function Home() {
       sessionStorage.setItem('capturedImage', base64String);
       router.push('/create');
     } catch (error: unknown) {
-      console.error('Error uploading image:', error);
+      console.error('Error uploading this image:', error);
       setError('Failed to upload image. Please try again.');
     }
   };

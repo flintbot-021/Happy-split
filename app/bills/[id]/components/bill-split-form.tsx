@@ -11,17 +11,15 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Slider } from "@/components/ui/slider"
 import { cn } from "@/lib/utils"
-import { Edit2, UtensilsCrossed, Wine, PartyPopper, ArrowRight, Share2 } from "lucide-react"
+import { UtensilsCrossed, Wine, PartyPopper, ArrowRight, Share2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { supabase } from '@/lib/utils'
 import { toast } from "sonner"
 import { CATEGORY_ORDER } from "@/app/create/types"
-import { TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface BillItem {
   id: string
@@ -315,10 +313,6 @@ export function BillSplitForm({ bill, onTabChange }: { bill: Bill; onTabChange: 
       : item.price
   }
 
-  const handleEditBill = () => {
-    router.push(`/create?billId=${bill.id}`);
-  };
-
   // Separate items into available and accounted for
   const categorizeItems = () => {
     const available: Record<string, BillItem[]> = {};
@@ -379,31 +373,13 @@ export function BillSplitForm({ bill, onTabChange }: { bill: Bill; onTabChange: 
 
   return (
     <div className="flex flex-col h-screen">
-      {/* Fixed Top Section */}
-      <div className="fixed top-0 left-0 right-0 bg-background z-10 border-b pt-safe">
-        <div className="max-w-md mx-auto px-4">
-          <div className="flex flex-row items-center justify-between py-4">
-            <CardTitle>Select Your Items</CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-muted-foreground hover:text-foreground"
-              onClick={handleEditBill}
-            >
-              <Edit2 className="h-4 w-4 mr-1" />
-              Edit Bill
-            </Button>
-          </div>
-          <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="split">Split Bill</TabsTrigger>
-            <TabsTrigger value="summary">Summary</TabsTrigger>
-          </TabsList>
-        </div>
-      </div>
-
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto pt-[140px] pb-52 px-4">
-        <div className="max-w-md mx-auto">
+      <div className={cn(
+        "flex-1 overflow-y-auto pb-40 px-4",
+        "pt-32",
+        "supports-[padding-top:env(safe-area-inset-top)]:pt-[calc(128px+env(safe-area-inset-top))]"
+      )}>
+        <div className="max-w-md mx-auto space-y-8">
           {/* Success State */}
           {areAllItemsAccountedFor() && (
             <div className="rounded-lg border bg-card text-card-foreground p-6 space-y-4">

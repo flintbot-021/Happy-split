@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from '@/lib/utils'
-import { Trash2, Edit2 } from "lucide-react"
+import { Edit2, Trash2 } from "lucide-react"
 import {
   AlertDialog,
   AlertDialogContent,
@@ -12,9 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -152,93 +150,93 @@ export function DinersList({ bill }: { bill: Bill }) {
   };
 
   return (
-    <div className="max-w-md mx-auto">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Bill Summary</CardTitle>
-          <span className="text-sm text-muted-foreground">
-            {bill.diners.length} diners
-          </span>
-        </CardHeader>
-        <CardContent>
-          <ScrollArea className="h-[500px] pr-4">
-            <div className="space-y-6">
-              {bill.diners.map((diner) => (
-                <div key={diner.id} className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-semibold text-lg">{diner.name}</h3>
-                    <div className="flex items-center gap-4">
-                      <button
-                        onClick={() => setEditingDiner(editingDiner === diner.id ? null : diner.id)}
-                        className="text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => setDinerToDelete(diner.id)}
-                        className="text-muted-foreground hover:text-red-600 transition-colors"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                      <span className="text-lg font-bold">
-                        R{diner.total.toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    {diner.items.map((item, index) => {
-                      const billItem = bill.bill_items.find(bi => bi.id === item.itemId);
-                      if (!billItem) return null;
-
-                      return (
-                        <div 
-                          key={item.itemId} 
-                          className={cn(
-                            "flex justify-between text-sm items-center p-2 rounded-lg",
-                            index % 2 === 0 ? "bg-transparent" : "bg-muted/50"
-                          )}
-                        >
-                          <span className="text-muted-foreground">
-                            {item.quantity}x {billItem.name}
-                          </span>
-                          <div className="flex items-center gap-2">
-                            <span>
-                              R{(billItem.price * item.quantity).toFixed(2)}
-                            </span>
-                            {editingDiner === diner.id && (
-                              <button
-                                onClick={() => handleDeleteItem(diner.id, item.itemId)}
-                                className="text-muted-foreground hover:text-red-600 transition-colors p-1"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {diner.tip_amount > 0 && (
-                      <div className="flex justify-between text-sm text-green-600">
-                        <div className="flex items-center gap-2">
-                          <span>Tip</span>
-                          <Badge variant="secondary" className="text-xs">
-                            {((diner.tip_amount / (diner.total - diner.tip_amount)) * 100).toFixed(1)}%
-                          </Badge>
-                        </div>
-                        <span>R{diner.tip_amount.toFixed(2)}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <Separator />
+    <div className="flex flex-col h-screen">
+      {/* Scrollable Content */}
+      <div className={cn(
+        "flex-1 overflow-y-auto pb-40 px-4",
+        "pt-32",
+        "supports-[padding-top:env(safe-area-inset-top)]:pt-[calc(128px+env(safe-area-inset-top))]"
+      )}>
+        <div className="max-w-md mx-auto space-y-8">
+          {bill.diners.map((diner) => (
+            <div key={diner.id} className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="font-semibold text-lg">{diner.name}</h3>
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => setEditingDiner(editingDiner === diner.id ? null : diner.id)}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => setDinerToDelete(diner.id)}
+                    className="text-muted-foreground hover:text-red-600 transition-colors"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                  <span className="text-lg font-bold">
+                    R{diner.total.toFixed(2)}
+                  </span>
                 </div>
-              ))}
-            </div>
-          </ScrollArea>
+              </div>
 
-          <div className="mt-6 space-y-4">
+              <div className="space-y-2">
+                {diner.items.map((item, index) => {
+                  const billItem = bill.bill_items.find(bi => bi.id === item.itemId);
+                  if (!billItem) return null;
+
+                  return (
+                    <div 
+                      key={item.itemId} 
+                      className={cn(
+                        "flex justify-between text-sm items-center p-2 rounded-lg",
+                        index % 2 === 0 ? "bg-transparent" : "bg-muted/50"
+                      )}
+                    >
+                      <span className="text-muted-foreground">
+                        {item.quantity}x {billItem.name}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span>
+                          R{(billItem.price * item.quantity).toFixed(2)}
+                        </span>
+                        {editingDiner === diner.id && (
+                          <button
+                            onClick={() => handleDeleteItem(diner.id, item.itemId)}
+                            className="text-muted-foreground hover:text-red-600 transition-colors p-1"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {diner.tip_amount > 0 && (
+                  <div className="flex justify-between text-sm text-green-600">
+                    <div className="flex items-center gap-2">
+                      <span>Tip</span>
+                      <Badge variant="secondary" className="text-xs">
+                        {((diner.tip_amount / (diner.total - diner.tip_amount)) * 100).toFixed(1)}%
+                      </Badge>
+                    </div>
+                    <span>R{diner.tip_amount.toFixed(2)}</span>
+                  </div>
+                )}
+              </div>
+
+              <Separator />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Fixed Bottom Section */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t">
+        <div className="max-w-md mx-auto px-4 py-4 space-y-4">
+          <div className="space-y-4">
             <div className="flex justify-between items-center">
               <span className="font-medium">Total Paid</span>
               <span className="text-xl font-bold">
@@ -252,8 +250,6 @@ export function DinersList({ bill }: { bill: Bill }) {
                 R{bill.total_amount.toFixed(2)}
               </span>
             </div>
-
-            <Separator />
 
             <div className="flex justify-between items-center font-medium">
               {outstandingAmount < 0 ? (
@@ -278,8 +274,8 @@ export function DinersList({ bill }: { bill: Bill }) {
               )}
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <AlertDialog open={!!dinerToDelete} onOpenChange={() => setDinerToDelete(null)}>
         <AlertDialogContent>

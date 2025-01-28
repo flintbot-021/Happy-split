@@ -27,13 +27,7 @@ export default async function BillPage({ params }: PageProps) {
         <BillTabs bill={bill} />
       </div>
 
-      {/* Bill Code Banner */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t">
-        <div className="py-3 px-4 flex justify-between items-center max-w-3xl mx-auto">
-          <div className="text-sm text-muted-foreground">Bill Code</div>
-          <div className="font-mono font-medium">{id}</div>
-        </div>
-      </div>
+      
     </div>
   )
 } 

@@ -11,17 +11,14 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Slider } from "@/components/ui/slider"
-import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { ChevronDown, Edit2, UtensilsCrossed, Wine, PartyPopper, ArrowRight, Share2 } from "lucide-react"
+import { Edit2, UtensilsCrossed, Wine, PartyPopper, ArrowRight, Share2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { supabase } from '@/lib/utils'
-import { analytics } from '@/lib/posthog'
 import { toast } from "sonner"
 import { CATEGORY_ORDER } from "@/app/create/types"
 import { TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -111,7 +108,6 @@ export function BillSplitForm({ bill, onTabChange }: { bill: Bill; onTabChange: 
     const item = items.find(i => i.id === itemId)
     if (!item) return
 
-    const previousQuantity = item.myQuantity || 0
     const newQuantity = value[0]
 
     setItems(items.map(i =>
@@ -132,7 +128,6 @@ export function BillSplitForm({ bill, onTabChange }: { bill: Bill; onTabChange: 
   const selectedItems = items.filter(i => i.selected)
 
   const handleTipSelect = (value: number) => {
-    const previousPercentage = tipPercentage
     setTipPercentage(value)
     setIsCustomTip(false)
   }
@@ -312,10 +307,6 @@ export function BillSplitForm({ bill, onTabChange }: { bill: Bill; onTabChange: 
   useEffect(() => {
     localStorage.setItem(`bill-${bill.id}-tip`, tipPercentage.toString())
   }, [tipPercentage, bill.id])
-
-  // Calculate total paid and outstanding amount
-  const totalPaid = bill.diners.reduce((sum, diner) => sum + diner.total, 0)
-  const outstandingAmount = bill.total_amount - totalPaid
 
   const getItemTotal = (item: BillItem) => {
     const quantity = item.myQuantity || 0
